@@ -42,15 +42,33 @@ class Dungeon:
     height: int
     grid: list = field(default_factory=list)   # grid[y][x]
     rooms: list = field(default_factory=list)
+    doors: list = field(default_factory=list)      # lista de doors.Door
+    door_at: dict = field(default_factory=dict)    # (tx, ty) -> Door
 
-    def is_walkable(self, tx, ty):
+    def is_floor(self, tx, ty):
+        """Chão no grid (ignora o estado das portas)."""
         if 0 <= tx < self.width and 0 <= ty < self.height:
             return self.grid[ty][tx] == FLOOR
         return False
 
+    def is_walkable(self, tx, ty):
+        """Dá para andar/ver através: chão que não seja porta fechada."""
+        if not self.is_floor(tx, ty):
+            return False
+        door = self.door_at.get((tx, ty))
+        return door is None or door.open
+
     @property
     def spawn(self):
-        return self.rooms[0].center
+        """Chão mais próximo do canto superior esquerdo (que não seja porta)."""
+        best = None
+        for y, row in enumerate(self.grid):
+            for x, cell in enumerate(row):
+                if cell == FLOOR and (x, y) not in self.door_at:
+                    key = (x * x + y * y, y, x)
+                    if best is None or key < best:
+                        best = key
+        return (best[2], best[1])
 
 
 class _Leaf:
@@ -134,6 +152,10 @@ def generate(seed, width=80, height=60):
         _corridor(grid, rng, node.left.any_room(rng).center, node.right.any_room(rng).center)
 
     connect(root)
+
+    # 4) Portas nas entradas das salas
+    from doors import place_doors  # import local: doors usa tipos deste módulo
+    place_doors(d, rng)
     return d
 
 

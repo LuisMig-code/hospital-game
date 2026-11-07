@@ -9,6 +9,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dungeon import FLOOR, generate, normalize_seed  # noqa: E402
 
 
+def open_all_doors(d):
+    for door in d.doors:
+        door.open = True
+    return d
+
+
 def flood(d):
     sx, sy = d.spawn
     seen = {(sx, sy)}
@@ -36,7 +42,7 @@ class DungeonTests(unittest.TestCase):
 
     def test_connected_and_bordered(self):
         for seed in range(200):
-            d = generate(seed)
+            d = open_all_doors(generate(seed))
             floor = {(x, y) for y in range(d.height) for x in range(d.width) if d.grid[y][x] == FLOOR}
             self.assertGreater(len(d.rooms), 3, seed)
             self.assertEqual(flood(d), floor, f"seed {seed} tem chão inalcançável")
@@ -47,12 +53,21 @@ class DungeonTests(unittest.TestCase):
                 self.assertNotEqual(d.grid[y][0], FLOOR)
                 self.assertNotEqual(d.grid[y][d.width - 1], FLOOR)
 
+    def test_spawn_is_nearest_floor_to_top_left(self):
+        for seed in range(50):
+            d = generate(seed)
+            sx, sy = d.spawn
+            self.assertTrue(d.is_walkable(sx, sy))
+            self.assertNotIn((sx, sy), d.door_at)
+            best = min(x * x + y * y for y in range(d.height) for x in range(d.width)
+                       if d.grid[y][x] == FLOOR and (x, y) not in d.door_at)
+            self.assertEqual(sx * sx + sy * sy, best, seed)
 
     def test_no_one_tile_wide_passages(self):
         """Todo tile de chão faz parte de algum bloco 2x2 de chão
         (corredores e salas têm pelo menos 2 de largura)."""
         for seed in range(200):
-            d = generate(seed)
+            d = open_all_doors(generate(seed))
             w = d.is_walkable
             for y in range(d.height):
                 for x in range(d.width):

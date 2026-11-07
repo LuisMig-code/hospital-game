@@ -20,6 +20,8 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `COLOR_FLOOR` | (60, 170, 80) | Piso quando o tileset não carrega |
 | `COLOR_WALL` | (90, 90, 90) | Parede quando o tileset não carrega |
 | `COLOR_WALL_TOP` | (35, 40, 42) | Topo/laterais das paredes |
+| `COLOR_DOOR_CLOSED` | (120, 80, 40) | Porta fechada quando o tileset não carrega |
+| `COLOR_DOOR_OPEN` | (50, 35, 20) | Porta aberta quando o tileset não carrega |
 | `COLOR_GRID` | (0, 0, 0, 40) | Linhas do grid (RGBA) |
 | `COLOR_BG` | (20, 20, 20) | Fundo fora do mapa |
 | `COLOR_TEXT` | branco | Texto do HUD |

@@ -2,6 +2,12 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-07 — Spawn no canto superior esquerdo e portas
+- O personagem nasce no chão mais próximo do canto superior esquerdo.
+- **Portas duplas** em todas as entradas das salas (cima, baixo, laterais), começando fechadas; **Espaço** abre/fecha a porta à frente.
+- Porta fechada bloqueia passagem e visão; ao abrir, a visão é recalculada.
+- Visão: paredes vizinhas de chão visível também aparecem (a parede inteira de uma sala fica visível, não só os primeiros tiles).
+
 ## 2026-11-07 — Remoção do círculo de visão
 - Círculo branco em volta do personagem removido (o alcance continua 8 tiles, só não é mais desenhado).
 
@@ -29,4 +35,4 @@ Registro do que foi implementado em cada etapa, da mais recente para a mais anti
 - **Névoa de guerra** com linha de visão (paredes bloqueiam) e memória do que já foi explorado.
 
 ## Próximos passos sugeridos
-- Colocar as **portas** do tileset nas entradas das salas (precisa que a dungeon marque onde corredores encontram salas).
+- Usar as portas simples (`door_single_*`) — hoje todas as portas têm 2 tiles.

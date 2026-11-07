@@ -46,11 +46,26 @@ def compute_fov(dungeon, origin, radius):
             if all(dungeon.is_walkable(x, y) for x, y in path[1:-1]):
                 visible.add(target)
 
+    # Paredes (e portas fechadas) vizinhas de um chão visível também são
+    # visíveis. Sem isso, olhando ao longo de uma parede, a linha de visão
+    # "raspa" na própria parede e só os primeiros tiles dela aparecem.
+    for x, y in [t for t in visible if dungeon.is_walkable(*t)]:
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                n = (x + dx, y + dy)
+                if (0 <= n[0] < dungeon.width and 0 <= n[1] < dungeon.height
+                        and not dungeon.is_walkable(*n)):
+                    visible.add(n)
+
     # Paredes altas ocupam 2 tiles: a face frontal (parede com chão abaixo)
     # e o tile de cima. Se a face é visível, a parte de cima também é.
     for x, y in list(visible):
         if (not dungeon.is_walkable(x, y) and dungeon.is_walkable(x, y + 1)
                 and y > 0 and not dungeon.is_walkable(x, y - 1)):
+            visible.add((x, y - 1))
+        # Porta na parede de cima da sala também é desenhada com 2 tiles
+        door = getattr(dungeon, "door_at", {}).get((x, y))
+        if door is not None and door.side == "top" and y > 0:
             visible.add((x, y - 1))
     return visible
 
@@ -65,10 +80,11 @@ class Vision:
         self.explored = set()
         self.origin = None
 
-    def update(self, origin):
-        """Recalcula se o personagem mudou de tile. Retorna os tiles
+    def update(self, origin, force=False):
+        """Recalcula se o personagem mudou de tile (ou se force=True, por
+        exemplo depois de abrir/fechar uma porta). Retorna os tiles
         descobertos pela primeira vez (vazio se nada mudou)."""
-        if origin == self.origin:
+        if origin == self.origin and not force:
             return set()
         self.origin = origin
         self.visible = compute_fov(self.dungeon, origin, self.radius)

@@ -5,7 +5,7 @@ Uso:
     venv\\Scripts\\python.exe main.py 12345      # seed específica (número ou texto)
 
 Controles: WASD/setas movem, Shift corre, +/- zoom, R gera nova dungeon,
-G liga/desliga o grid, V liga/desliga a névoa, ESC sai.
+G liga/desliga o grid, V liga/desliga a névoa, Espaço abre/fecha portas, ESC sai.
 """
 import random
 import sys
@@ -17,7 +17,8 @@ from dungeon import FLOOR, generate
 from fov import Vision
 from player import Player
 from sprites import load_animations
-from tileset import Tileset, render_map
+from doors import try_toggle
+from tileset import Tileset, draw_door, init_doors, render_map
 
 
 def build_map_surface(dungeon, tiles=None):
@@ -30,6 +31,7 @@ def build_map_surface(dungeon, tiles=None):
         for x, cell in enumerate(row):
             color = S.COLOR_FLOOR if cell == FLOOR else S.COLOR_WALL
             surf.fill(color, (x * S.TILE, y * S.TILE, S.TILE, S.TILE))
+    init_doors(surf, dungeon, None)
     return surf
 
 
@@ -59,6 +61,7 @@ class Game:
             self.tiles = None
         self.show_grid = True
         self.show_fog = True
+        self.message, self.message_until = "", 0
         self.zoom_index = S.ZOOM_DEFAULT
         self.new_level(seed)
 
@@ -75,10 +78,20 @@ class Game:
         self.update_vision()
         print(f"Seed: {seed} -> {len(self.dungeon.rooms)} salas")
 
-    def update_vision(self):
+    def toggle_door(self):
+        """Espaço: abre/fecha a porta à frente do personagem."""
+        result, door = try_toggle(self.dungeon, self.player)
+        if result in ("abriu", "fechou"):
+            draw_door(self.map_surf, door, self.tiles)
+            self.update_vision(force=True)   # a porta muda o que dá para ver
+        elif result == "bloqueada":
+            self.show_message("Saia da porta para fechá-la")
+        return result
+
+    def update_vision(self, force=False):
         # Tile onde o personagem está desenhado (avança no meio do passo)
         origin = (int(self.player.x // S.TILE), int(self.player.y // S.TILE))
-        for tx, ty in self.vision.update(origin):
+        for tx, ty in self.vision.update(origin, force):
             self.fog_surf.fill((*S.COLOR_UNEXPLORED, S.FOG_EXPLORED_ALPHA),
                                (tx * S.TILE, ty * S.TILE, S.TILE, S.TILE))
 
@@ -133,7 +146,7 @@ class Game:
         p = self.player
         tx, ty = p.tile
         hud = (f"Seed: {self.seed_label}   Tile: ({tx}, {ty})   Zoom: {self.zoom:g}x   "
-               "[Shift] correr  [+/-] zoom  [R] nova  [G] grid  [V] névoa  [ESC] sair")
+               "[Shift] correr [Espaço] porta [+/-] zoom [R] nova [G] grid [V] névoa [ESC] sair")
         self.screen.blit(self.font.render(hud, True, S.COLOR_TEXT), (10, 8))
 
         # Barra de estamina
@@ -145,6 +158,14 @@ class Game:
         pygame.draw.rect(self.screen, (230, 230, 230), (x, y, w, h), 1)
         label = f"Estamina: {int(p.stamina)}/{S.STAMINA_MAX}" + ("  CORRENDO" if p.running else "")
         self.screen.blit(self.font.render(label, True, S.COLOR_TEXT), (x + w + 10, y - 2))
+
+        # Mensagem temporária (ex.: porta bloqueada)
+        if self.message and pygame.time.get_ticks() < self.message_until:
+            self.screen.blit(self.font.render(self.message, True, (255, 200, 120)), (10, 56))
+
+    def show_message(self, text, seconds=1.5):
+        self.message = text
+        self.message_until = pygame.time.get_ticks() + int(seconds * 1000)
 
     def run(self):
         while True:
@@ -158,6 +179,8 @@ class Game:
                     self.show_grid = not self.show_grid
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_v:
                     self.show_fog = not self.show_fog
+                if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
+                    self.toggle_door()
                 if e.type == pygame.KEYDOWN:
                     # "+" pode vir da tecla "=" (com ou sem Shift) ou do teclado numérico
                     if e.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS) or e.unicode == "+":

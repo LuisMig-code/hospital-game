@@ -1,6 +1,6 @@
 # Hospital Game — documentação
 
-Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a partir de uma **seed**, uma dungeon de hospital com salas e corredores. O personagem anda tile a tile, pode correr gastando estamina e só enxerga o que está perto dele (névoa de guerra).
+Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a partir de uma **seed**, uma dungeon de hospital com salas, corredores e portas. O personagem nasce no canto superior esquerdo, anda tile a tile, pode correr gastando estamina, abre e fecha portas e só enxerga o que está perto dele (névoa de guerra).
 
 ## Índice
 
@@ -33,6 +33,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 |---|---|
 | WASD / setas | Andar (um tile por vez; segurando, anda contínuo) |
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
+| Espaço | Abrir/fechar a porta à frente do personagem |
 | `+` / `-` | Zoom 1x ↔ 2x |
 | R | Gerar nova dungeon (seed aleatória) |
 | G | Mostrar/esconder o grid |
@@ -44,7 +45,8 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 ```
 main.py              loop do jogo, câmera, zoom, névoa, HUD
 settings.py          todas as constantes ajustáveis
-dungeon.py           geração procedural (BSP) a partir da seed
+dungeon.py           geração procedural (BSP) a partir da seed; spawn
+doors.py             posicionamento das portas e abrir/fechar
 player.py            movimento em grid, corrida, estamina, animação
 fov.py               campo de visão (linha de visão) e memória do explorado
 sprites.py           recorte do sprite sheet do personagem

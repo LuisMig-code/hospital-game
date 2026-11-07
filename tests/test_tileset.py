@@ -11,7 +11,7 @@ import pygame  # noqa: E402
 
 import settings as S  # noqa: E402
 from dungeon import generate  # noqa: E402
-from tileset import PIECE_ROWS, Tileset, _is_outline, find_pieces, load_pieces, render_map  # noqa: E402
+from tileset import PIECE_ROWS, Tileset, _is_outline, draw_door, find_pieces, load_pieces, render_map  # noqa: E402
 
 
 class TilesetTests(unittest.TestCase):
@@ -54,6 +54,26 @@ class TilesetTests(unittest.TestCase):
         b = render_map(generate(42), self.tiles)
         self.assertEqual(a.get_size(), (d.width * S.TILE, d.height * S.TILE))
         self.assertEqual(pygame.image.tobytes(a, "RGB"), pygame.image.tobytes(b, "RGB"))
+
+
+    def test_door_sprites_and_toggle_redraw(self):
+        t = S.TILE
+        sizes = {"top": (2 * t, 2 * t), "bottom": (2 * t, t), "left": (t, 2 * t), "right": (t, 2 * t)}
+        for side, size in sizes.items():
+            for is_open in (False, True):
+                self.assertEqual(self.tiles.door[side][is_open].get_size(), size)
+
+        d = generate(42)
+        surf = render_map(d, self.tiles)
+        before = pygame.image.tobytes(surf, "RGB")
+        for door in d.doors:
+            door.open = True
+            draw_door(surf, door, self.tiles)
+        self.assertNotEqual(pygame.image.tobytes(surf, "RGB"), before)
+        for door in d.doors:
+            door.open = False
+            draw_door(surf, door, self.tiles)
+        self.assertEqual(pygame.image.tobytes(surf, "RGB"), before)
 
 
 if __name__ == "__main__":

@@ -6,34 +6,38 @@
 |---|---|---|
 | `main.py` | Janela, loop principal, input, câmera, zoom, névoa e HUD | `Game`, `build_map_surface`, `build_grid_surface` |
 | `settings.py` | Constantes (tela, cores, velocidades, estamina, visão, zoom) | — |
-| `dungeon.py` | Gera o grid da dungeon a partir da seed | `generate`, `Dungeon`, `Room`, `WALL`, `FLOOR`, `normalize_seed` |
+| `dungeon.py` | Gera o grid da dungeon a partir da seed; spawn | `generate`, `Dungeon`, `Room`, `WALL`, `FLOOR`, `normalize_seed` |
+| `doors.py` | Onde ficam as portas e abrir/fechar | `Door`, `place_doors`, `try_toggle` |
 | `player.py` | Movimento tile a tile, corrida, estamina, animação | `Player`, `tile_center` |
 | `fov.py` | Campo de visão e tiles já explorados | `compute_fov`, `Vision`, `in_radius` |
 | `sprites.py` | Recorta o sprite sheet do personagem em animações | `load_animations`, `slice_sheet` |
-| `tileset.py` | Recorta o tileset do hospital e desenha o mapa | `load_pieces`, `Tileset`, `render_map` |
+| `tileset.py` | Recorta o tileset do hospital e desenha o mapa e as portas | `load_pieces`, `Tileset`, `render_map`, `draw_door` |
 
 Dependências entre módulos (setas = "usa"):
 
 ```
-main ──► dungeon, player, fov, sprites, tileset, settings
+main ──► dungeon, doors, player, fov, sprites, tileset, settings
+dungeon ► doors (place_doors, no fim de generate)
+doors ──► dungeon (WALL)
 player ─► settings
 fov ────► (só recebe o objeto Dungeon)
 tileset ► dungeon (FLOOR), settings
 sprites ► settings
 ```
 
-`dungeon.py` e `fov.py` não dependem de pygame, então podem ser testados sem janela.
+`dungeon.py`, `doors.py` e `fov.py` não dependem de pygame, então podem ser testados sem janela.
 
 ## Ciclo de vida
 
 1. `Game.__init__` abre a janela, carrega as animações (`load_animations`) e o tileset (`Tileset()`). Se o tileset falhar ao carregar, o jogo cai para as cores sólidas verde/cinza.
 2. `Game.new_level(seed)` (no início e ao apertar **R**):
-   - gera a dungeon (`generate`);
-   - pré-renderiza o mapa inteiro numa `Surface` (`build_map_surface` → `render_map`) e o grid (`build_grid_surface`) — os tiles não mudam, então isso é feito uma vez só;
-   - cria o `Player` no centro da primeira sala;
+   - gera a dungeon (`generate`), já com as portas (fechadas);
+   - pré-renderiza o mapa inteiro numa `Surface` (`build_map_surface` → `render_map`) e o grid (`build_grid_surface`) — o mapa só muda na área de uma porta quando ela abre/fecha;
+   - cria o `Player` no spawn (chão mais próximo do canto superior esquerdo);
    - cria a `Vision` e a superfície da névoa (`fog_surf`, toda preta).
 3. A cada frame (`Game.run`):
-   - eventos de teclado (R, G, V, +/-, ESC);
+   - eventos de teclado (R, G, V, +/-, Espaço, ESC);
+   - Espaço → `toggle_door()`: `try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada (`update_vision(force=True)`);
    - `player.update(dt, teclas, dungeon)`;
    - `update_vision()` — recalcula a visão se o personagem mudou de tile e "descobre" os tiles novos na névoa;
    - `draw_world()` e `draw_hud()`.
@@ -42,13 +46,13 @@ sprites ► settings
 
 O mundo é desenhado numa superfície do tamanho da área visível (`view_size()` = tela ÷ zoom) e depois escalado para a tela:
 
-1. mapa pré-renderizado (piso + paredes);
+1. mapa pré-renderizado (piso + paredes + portas no estado atual);
 2. grid (só sobre o piso), se ligado;
 3. névoa (`fog_surf`): preto no não descoberto, escurecido no já descoberto;
 4. tiles dentro da visão redesenhados por cima da névoa (cores normais);
 5. personagem.
 
-O HUD (seed, tile, zoom, estamina) é desenhado direto na tela, depois da escala, para não mudar de tamanho com o zoom.
+O HUD (seed, tile, zoom, estamina, mensagens temporárias) é desenhado direto na tela, depois da escala, para não mudar de tamanho com o zoom.
 
 ## Coordenadas
 

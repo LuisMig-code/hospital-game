@@ -11,7 +11,34 @@ Algoritmo **BSP (Binary Space Partitioning)**, determinístico pela seed (`rando
 
 Seeds em texto viram número com `zlib.crc32` (estável entre execuções, ao contrário de `hash()`); textos numéricos como `"42"` viram o próprio número.
 
-O personagem começa no centro da primeira sala (`Dungeon.spawn`).
+### Spawn
+
+O personagem nasce no **canto superior esquerdo**: `Dungeon.spawn` é o tile de chão (que não seja porta) mais próximo de `(0, 0)` — menor `x² + y²`, com desempate por `y` e depois `x`. Como o canto em si é sempre parede, ele nasce no chão mais próximo dali.
+
+## Portas (`doors.py`)
+
+### Onde ficam
+`place_doors` roda no fim de `generate` (mesmo `rng`, então é determinístico). Para cada sala e cada lado (cima, baixo, esquerda, direita), percorre a linha de parede logo fora da sala procurando **aberturas** — chão na linha da parede com corredor do lado de fora. Vira porta a abertura que:
+- tem 2 ou 3 tiles contínuos (corredores têm 2–3 de largura);
+- tem parede nas duas pontas, e o corredor entra perpendicular à parede.
+
+Aberturas de 3 tiles são estreitadas para 2 (uma ponta, sorteada, vira parede): todas as portas são **duplas** (2 tiles). Depois disso, `_fill_nubs` transforma em parede qualquer chão que tenha ficado com 1 tile de largura (por exemplo, um corredor curtinho entre duas portas estreitadas).
+
+Resultado típico: ~17 portas por dungeon, nos 4 lados.
+
+### Comportamento
+- `Door`: `tiles` (2 tiles), `side` (lado da sala), `open` (começa `False`).
+- Os tiles de porta continuam `FLOOR` no grid. `Dungeon.is_walkable` devolve `False` para **porta fechada** — então a porta fechada bloqueia o movimento e a visão automaticamente. `Dungeon.is_floor` ignora as portas (usado na geração e no desenho).
+- **Espaço** → `try_toggle(dungeon, player)`: usa a porta no tile à frente do personagem (direção em que ele está virado) ou no próprio tile. Abre/fecha os 2 tiles juntos. Não fecha se o personagem estiver em cima da porta ou indo para ela (mostra "Saia da porta para fechá-la").
+
+### Desenho
+| Lado | Sprite | Área |
+|---|---|---|
+| cima | porta dupla de frente, 2×2 tiles | tiles da porta + tile de cima (igual à parede alta, com pilares dos lados) |
+| baixo | porta dupla achatada, 2×1 tiles | tiles da porta |
+| esquerda / direita | porta dupla girada 90° (base virada para dentro da sala), 1×2 tiles | tiles da porta |
+
+`render_map` guarda em `door.base` o pedaço do mapa por baixo de cada porta. `draw_door` restaura esse pedaço e desenha o sprite do estado atual, atualizando só aquela área do mapa pré-renderizado.
 
 ## Movimento (`player.py`)
 
@@ -38,7 +65,9 @@ O personagem começa no centro da primeira sala (`Dungeon.spawn`).
 
 - Raio de **8 tiles** (`VISION_RADIUS`). Um tile está no raio se `dx² + dy² <= r² + r`, o que deixa o círculo mais redondo no grid.
 - **Linha de visão**: para cada tile no raio, traça uma linha de Bresenham a partir do personagem. O tile só é visível se todos os tiles no caminho forem chão. A parede em si aparece, mas o que está atrás dela não.
-- **Paredes altas**: ocupam 2 tiles (veja o tileset). Se a face frontal de uma parede está visível, o tile de cima também é revelado.
+- **Paredes vizinhas de chão visível** também ficam visíveis (inclusive portas fechadas). Sem isso, olhando rente a uma parede, a linha de visão "raspa" nela e só os primeiros tiles daquela parede aparecem.
+- **Paredes altas**: ocupam 2 tiles (veja o tileset). Se a face frontal de uma parede está visível, o tile de cima também é revelado. O mesmo vale para portas na parede de cima da sala.
+- **Portas**: fechada bloqueia a visão (não é andável); ao abrir/fechar, a visão é recalculada na hora (`Vision.update(origin, force=True)`).
 - `Vision` guarda `visible` (visto agora) e `explored` (visto alguma vez). Só recalcula quando muda o tile em que o personagem está desenhado, por isso a visão avança no meio do passo.
 - Cada tile fica num de três estados:
   - **não descoberto**: preto;
@@ -64,4 +93,4 @@ O mapa inteiro é desenhado uma vez por dungeon (`render_map`) a partir das peç
 - As variações (sangue, ventilação, faixas) usam um `Random` derivado da seed, então são as mesmas a cada vez.
 - O grid é desenhado só sobre o piso, para não cortar a arte das paredes.
 
-As **portas** já são recortadas, mas ainda não são usadas no mapa, porque a dungeon não marca as entradas das salas.
+- **Portas**: desenhadas por cima, depois das paredes (veja "Portas" acima). Para decidir o desenho das paredes, um tile de porta conta como sólido — por isso a parede ao lado de uma porta de cima termina em **pilar**.

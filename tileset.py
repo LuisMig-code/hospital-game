@@ -108,6 +108,19 @@ class Tileset:
         self.wall_right = self._tall(right)
         # Parede baixa: 1 tile de altura
         self.wall_low = self._scale_to_tiles(p["wall_low"], S.TILE)
+        # Portas duplas: {lado: {aberta: Surface}}
+        self.door = {}
+        for side in ("top", "bottom", "left", "right"):
+            self.door[side] = {}
+            for is_open, name in ((False, "door_double_closed"), (True, "door_double_open")):
+                img = pygame.transform.smoothscale(p[name], (2 * t, 2 * t))
+                if side == "bottom":      # achatada: 1 tile de altura
+                    img = pygame.transform.smoothscale(img, (2 * t, t))
+                elif side == "left":      # base virada para dentro da sala (leste)
+                    img = pygame.transform.smoothscale(pygame.transform.rotate(img, 90), (t, 2 * t))
+                elif side == "right":     # base virada para dentro da sala (oeste)
+                    img = pygame.transform.smoothscale(pygame.transform.rotate(img, -90), (t, 2 * t))
+                self.door[side][is_open] = img
 
     @staticmethod
     def _scale_to_tiles(img, height):
@@ -179,11 +192,52 @@ def render_map(dungeon, tileset):
             while x < w and is_front_wall(dungeon, x, y):
                 x += 1
             _draw_wall_run(surf, dungeon, tileset, rng, start, x - 1, y)
+
+    init_doors(surf, dungeon, tileset)
     return surf
 
 
+def _solid(dungeon, x, y):
+    """Parede ou porta (para decidir o desenho, independente do estado da porta)."""
+    return not dungeon.is_floor(x, y) or (x, y) in dungeon.door_at
+
+
 def is_front_wall(dungeon, x, y):
-    return (not dungeon.is_walkable(x, y)) and dungeon.is_walkable(x, y + 1)
+    """Parede de verdade (não porta) com chão livre logo abaixo."""
+    return not dungeon.is_floor(x, y) and not _solid(dungeon, x, y + 1)
+
+
+def door_rect(door):
+    """Área do mapa (em pixels) ocupada pelo desenho da porta."""
+    t = S.TILE
+    x0 = min(x for x, _ in door.tiles)
+    y0 = min(y for _, y in door.tiles)
+    if door.side == "top":       # 2 tiles de altura, como a parede alta
+        return pygame.Rect(x0 * t, (y0 - 1) * t, 2 * t, 2 * t)
+    if door.side == "bottom":
+        return pygame.Rect(x0 * t, y0 * t, 2 * t, t)
+    return pygame.Rect(x0 * t, y0 * t, t, 2 * t)
+
+
+def init_doors(surf, dungeon, tileset):
+    """Guarda o mapa por baixo de cada porta e desenha as portas."""
+    for door in dungeon.doors:
+        door.base = surf.subsurface(door_rect(door)).copy()
+        draw_door(surf, door, tileset)
+
+
+def draw_door(surf, door, tileset):
+    """(Re)desenha a porta no estado atual. Sem tileset, usa cores sólidas."""
+    rect = door_rect(door)
+    if door.base is not None:
+        surf.blit(door.base, rect.topleft)
+    if tileset is not None:
+        surf.blit(tileset.door[door.side][door.open], rect.topleft)
+    else:
+        t = S.TILE
+        for x, y in door.tiles:
+            color = S.COLOR_DOOR_OPEN if door.open else S.COLOR_DOOR_CLOSED
+            surf.fill(color, (x * t, y * t, t, t))
 
 
 def _draw_wall_run(surf, dungeon, ts, rng, x0, x1, y):
@@ -191,7 +245,7 @@ def _draw_wall_run(surf, dungeon, ts, rng, x0, x1, y):
     vent_left = 0   # colunas restantes da peça com ventilação em andamento
     vent_index = 0
     for x in range(x0, x1 + 1):
-        tall = 0 <= y - 1 and not dungeon.is_walkable(x, y - 1)
+        tall = 0 <= y - 1 and _solid(dungeon, x, y - 1)
         if not tall:
             img = Tileset.column(ts.wall_low, x - x0)
             surf.blit(img, (x * t, y * t))

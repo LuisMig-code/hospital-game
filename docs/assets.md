@@ -32,6 +32,8 @@
 | 2 | `wall_vent` (parede com ventilação), `wall_low` (parede baixa), `wall_pillar_left`, `wall_pillar_right` |
 | 3 | `door_double_closed`, `door_double_open`, `door_single_left`, `door_single_right` |
 
+Em uso: as **portas duplas** (fechada e aberta), em 4 versões — de frente (parede de cima), achatada (parede de baixo) e giradas 90° (laterais). As portas simples (`door_single_*`) ainda **não são usadas**: todas as portas do mapa têm 2 tiles.
+
 **Como o recorte funciona** (`tileset.py`):
 
 1. `find_pieces`: encontra os **componentes conectados** do alpha (`Mask.connected_components`) e descarta ruídos com menos de 400 px. Agrupa as peças em linhas pelo centro Y e ordena por X, chegando aos nomes da tabela. Se não encontrar exatamente 2 + 4 + 4 peças, gera um erro claro.
@@ -40,7 +42,8 @@
    - piso: 96×96 px (3×3 tiles);
    - paredes altas: 64 px de altura, recortadas pelo **topo da parede** (e não pela ponta do pilar) para os topos ficarem alinhados, com a largura arredondada para um múltiplo de 32;
    - parede lisa: 4 faixas de 1 coluna tiradas do miolo das paredes com pilar;
-   - parede baixa: 32 px de altura.
+   - parede baixa: 32 px de altura;
+   - portas duplas: 64×64 (cima), 64×32 (baixo), 32×64 girada ±90° (laterais), fechada e aberta (`Tileset.door[lado][aberta]`).
 
 > Bug contornado: no pygame-ce 2.5.8 (Windows), `mask.from_surface` numa subsurface de 1 px de largura causa um *access violation*. Por isso `_crop_to_wall` lê os pixels da coluna diretamente.
 

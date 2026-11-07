@@ -22,6 +22,8 @@ MAP_W, MAP_H = 80, 60
 COLOR_FLOOR = (60, 170, 80)     # verde: dá para andar (fallback sem tileset)
 COLOR_WALL = (90, 90, 90)       # cinza: não dá para andar (fallback sem tileset)
 COLOR_WALL_TOP = (35, 40, 42)   # topo das paredes visto de cima
+COLOR_DOOR_CLOSED = (120, 80, 40)  # porta fechada (fallback sem tileset)
+COLOR_DOOR_OPEN = (50, 35, 20)     # porta aberta (fallback sem tileset)
 
 # Variações do tileset (escolhidas pela seed)
 FLOOR_BLOOD_CHANCE = 0.08       # chance de um bloco 3x3 de piso ter sangue

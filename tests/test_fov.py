@@ -70,6 +70,32 @@ class FovTests(unittest.TestCase):
         self.assertIn((2, 1), vis)        # face da parede (chão abaixo)
         self.assertIn((2, 0), vis)        # parte de cima da parede alta
 
+    def test_whole_wall_along_room_is_visible(self):
+        d = make([
+            "###########",
+            "...........",
+            "...........",
+        ])
+        vis = compute_fov(d, (5, 1), R)
+        # olhando rente à parede de cima: a fileira inteira no alcance aparece
+        for x in range(1, 10):
+            self.assertIn((x, 0), vis)
+
+    def test_top_door_reveals_tile_above(self):
+        from doors import Door
+        d = make([
+            "##..##",
+            "##..##",
+            "......",
+            "......",
+        ])
+        door = Door(tiles=[(2, 1), (3, 1)], side="top")
+        d.doors.append(door)
+        d.door_at.update({(2, 1): door, (3, 1): door})
+        vis = compute_fov(d, (2, 3), R)
+        self.assertIn((2, 1), vis)        # porta fechada é visível
+        self.assertIn((2, 0), vis)        # e a parte de cima do desenho também
+
     def test_explored_grows_and_visible_in_radius(self):
         d = generate(42)
         v = Vision(d, R)
@@ -82,9 +108,10 @@ class FovTests(unittest.TestCase):
             self.assertEqual(new & seen, set())
             seen = set(v.explored)
             for tx, ty in v.visible:
-                # +1 na vertical: o topo das paredes altas fica 1 tile acima
-                self.assertTrue(in_radius(tx - tile[0], ty - tile[1], R)
-                                or in_radius(tx - tile[0], ty + 1 - tile[1], R))
+                # paredes vizinhas de chão visível podem passar 1 tile do raio,
+                # e o topo das paredes altas fica mais 1 tile acima
+                self.assertTrue(any(in_radius(tx + ox - tile[0], ty + oy - tile[1], R)
+                                    for ox in (-1, 0, 1) for oy in (-1, 0, 1, 2)))
         self.assertEqual(v.update(v.origin), set())   # mesmo tile: nada novo
 
 
