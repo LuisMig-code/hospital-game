@@ -5,3 +5,4 @@ __pycache__/
 
 # Frames gerados por tools/export_frames.py (o jogo recorta o sheet em tempo de execução)
 assets/personagem/frames/
+assets/background/pieces/

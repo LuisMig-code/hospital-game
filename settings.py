@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "assets"
 CHARACTER_SHEET = ASSETS / "personagem" / "Chibi Character Animation Sprite Sheet.png"
+TILESET = ASSETS / "background" / "hospital-tiles.png"
 
 # Tela / grid
 TILE = 32
@@ -18,8 +19,13 @@ ZOOM_DEFAULT = 1                # índice em ZOOM_LEVELS (começa no normal)
 MAP_W, MAP_H = 80, 60
 
 # Cores
-COLOR_FLOOR = (60, 170, 80)     # verde: dá para andar
-COLOR_WALL = (90, 90, 90)       # cinza: não dá para andar
+COLOR_FLOOR = (60, 170, 80)     # verde: dá para andar (fallback sem tileset)
+COLOR_WALL = (90, 90, 90)       # cinza: não dá para andar (fallback sem tileset)
+COLOR_WALL_TOP = (35, 40, 42)   # topo das paredes visto de cima
+
+# Variações do tileset (escolhidas pela seed)
+FLOOR_BLOOD_CHANCE = 0.08       # chance de um bloco 3x3 de piso ter sangue
+WALL_VENT_CHANCE = 0.15         # chance de uma parede ter ventilação
 COLOR_GRID = (0, 0, 0, 40)      # linhas do grid (com transparência)
 COLOR_BG = (20, 20, 20)
 COLOR_TEXT = (255, 255, 255)

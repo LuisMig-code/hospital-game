@@ -17,10 +17,14 @@ from dungeon import FLOOR, generate
 from fov import Vision
 from player import Player
 from sprites import load_animations
+from tileset import Tileset, render_map
 
 
-def build_map_surface(dungeon):
-    """Pré-renderiza o mapa inteiro (tiles não mudam)."""
+def build_map_surface(dungeon, tiles=None):
+    """Pré-renderiza o mapa inteiro (tiles não mudam). Usa a arte do tileset;
+    sem tileset, desenha com cores sólidas (verde/cinza)."""
+    if tiles is not None:
+        return render_map(dungeon, tiles)
     surf = pygame.Surface((dungeon.width * S.TILE, dungeon.height * S.TILE))
     for y, row in enumerate(dungeon.grid):
         for x, cell in enumerate(row):
@@ -30,12 +34,13 @@ def build_map_surface(dungeon):
 
 
 def build_grid_surface(dungeon):
-    w, h = dungeon.width * S.TILE, dungeon.height * S.TILE
-    surf = pygame.Surface((w, h), pygame.SRCALPHA)
-    for x in range(0, w + 1, S.TILE):
-        pygame.draw.line(surf, S.COLOR_GRID, (x, 0), (x, h))
-    for y in range(0, h + 1, S.TILE):
-        pygame.draw.line(surf, S.COLOR_GRID, (0, y), (w, y))
+    """Linhas do grid só sobre o piso (não cortam a arte das paredes)."""
+    t = S.TILE
+    surf = pygame.Surface((dungeon.width * t, dungeon.height * t), pygame.SRCALPHA)
+    for y, row in enumerate(dungeon.grid):
+        for x, cell in enumerate(row):
+            if cell == FLOOR:
+                pygame.draw.rect(surf, S.COLOR_GRID, (x * t, y * t, t + 1, t + 1), 1)
     return surf
 
 
@@ -47,6 +52,11 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("consolas", 18)
         self.anims = load_animations()
+        try:
+            self.tiles = Tileset()
+        except (pygame.error, FileNotFoundError, ValueError) as err:
+            print(f"Tileset não carregado ({err}); usando cores sólidas.")
+            self.tiles = None
         self.show_grid = True
         self.show_fog = True
         self.zoom_index = S.ZOOM_DEFAULT
@@ -54,7 +64,7 @@ class Game:
 
     def new_level(self, seed):
         self.dungeon = generate(seed, S.MAP_W, S.MAP_H)
-        self.map_surf = build_map_surface(self.dungeon)
+        self.map_surf = build_map_surface(self.dungeon, self.tiles)
         self.grid_surf = build_grid_surface(self.dungeon)
         self.player = Player(self.anims, self.dungeon.spawn)
         self.seed_label = str(seed)

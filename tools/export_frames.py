@@ -43,6 +43,29 @@ def main():
             pygame.draw.rect(preview, (255, 0, 0), (x, y, img.get_width(), img.get_height()), 1)
     pygame.image.save(preview, str(out / "preview.png"))
     print(f"Frames salvos em {out}")
+    export_tileset()
+
+
+def export_tileset():
+    """Salva cada peça do tileset do hospital e um preview com todas."""
+    from tileset import load_pieces
+
+    out = ASSETS / "background" / "pieces"
+    out.mkdir(parents=True, exist_ok=True)
+    pieces = load_pieces()
+    pad = 8
+    width = sum(p.get_width() + pad for p in pieces.values())
+    height = max(p.get_height() for p in pieces.values())
+    preview = pygame.Surface((width, height))
+    preview.fill((255, 0, 255))
+    x = 0
+    for name, img in pieces.items():
+        pygame.image.save(img, str(out / f"{name}.png"))
+        preview.blit(img, (x, 0))
+        x += img.get_width() + pad
+        print(f"{name:20s} {img.get_size()}")
+    pygame.image.save(preview, str(out / "preview.png"))
+    print(f"Peças do tileset salvas em {out}")
 
 
 if __name__ == "__main__":

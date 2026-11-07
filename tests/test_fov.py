@@ -59,6 +59,17 @@ class FovTests(unittest.TestCase):
         self.assertIn((5, 1), vis)
         self.assertFalse(any(x > 5 for x, _ in vis))
 
+    def test_tall_wall_top_is_revealed(self):
+        d = make([
+            "#####",
+            "#####",
+            ".....",
+            ".....",
+        ])
+        vis = compute_fov(d, (2, 3), R)
+        self.assertIn((2, 1), vis)        # face da parede (chão abaixo)
+        self.assertIn((2, 0), vis)        # parte de cima da parede alta
+
     def test_explored_grows_and_visible_in_radius(self):
         d = generate(42)
         v = Vision(d, R)
@@ -71,7 +82,9 @@ class FovTests(unittest.TestCase):
             self.assertEqual(new & seen, set())
             seen = set(v.explored)
             for tx, ty in v.visible:
-                self.assertTrue(in_radius(tx - tile[0], ty - tile[1], R))
+                # +1 na vertical: o topo das paredes altas fica 1 tile acima
+                self.assertTrue(in_radius(tx - tile[0], ty - tile[1], R)
+                                or in_radius(tx - tile[0], ty + 1 - tile[1], R))
         self.assertEqual(v.update(v.origin), set())   # mesmo tile: nada novo
 
 

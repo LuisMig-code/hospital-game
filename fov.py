@@ -45,6 +45,13 @@ def compute_fov(dungeon, origin, radius):
             path = list(_line(origin, target))
             if all(dungeon.is_walkable(x, y) for x, y in path[1:-1]):
                 visible.add(target)
+
+    # Paredes altas ocupam 2 tiles: a face frontal (parede com chão abaixo)
+    # e o tile de cima. Se a face é visível, a parte de cima também é.
+    for x, y in list(visible):
+        if (not dungeon.is_walkable(x, y) and dungeon.is_walkable(x, y + 1)
+                and y > 0 and not dungeon.is_walkable(x, y - 1)):
+            visible.add((x, y - 1))
     return visible
 
 
