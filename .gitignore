@@ -1,0 +1,7 @@
+# Ambiente virtual e caches
+venv/
+__pycache__/
+*.pyc
+
+# Frames gerados por tools/export_frames.py (o jogo recorta o sheet em tempo de execução)
+assets/personagem/frames/
