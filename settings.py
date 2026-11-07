@@ -11,9 +11,9 @@ TILE = 32
 SCREEN_W, SCREEN_H = 1280, 720
 FPS = 60
 
-# Zoom da câmera (teclas + e -): 3 níveis
-ZOOM_LEVELS = (0.5, 1.0, 2.0)   # afastado, normal, aproximado
-ZOOM_DEFAULT = 1                # índice em ZOOM_LEVELS (começa no normal)
+# Zoom da câmera (teclas + e -)
+ZOOM_LEVELS = (1.0, 2.0)        # normal, aproximado
+ZOOM_DEFAULT = 0                # índice em ZOOM_LEVELS (começa no normal)
 
 # Mapa (em tiles)
 MAP_W, MAP_H = 80, 60
@@ -31,7 +31,9 @@ COLOR_BG = (20, 20, 20)
 COLOR_TEXT = (255, 255, 255)
 
 # Visão (névoa de guerra)
-VISION_RADIUS = 5               # raio de visão em tiles
+VISION_RADIUS = 8               # raio de visão em tiles
+COLOR_VISION_CIRCLE = (255, 240, 180, 110)  # contorno do círculo de visão (RGBA)
+VISION_CIRCLE_WIDTH = 2         # espessura do contorno em px
 FOG_EXPLORED_ALPHA = 160        # escurecimento do já descoberto fora da visão (0-255)
 COLOR_UNEXPLORED = (0, 0, 0)
 
