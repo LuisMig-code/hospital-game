@@ -45,7 +45,6 @@ O personagem começa no centro da primeira sala (`Dungeon.spawn`).
   - **descoberto, fora da visão**: escurecido (`FOG_EXPLORED_ALPHA`);
   - **dentro da visão**: cores normais.
 - A névoa é uma superfície do tamanho do mapa, atualizada só nos tiles recém-descobertos (incremental).
-- Um **círculo** semitransparente mostra o alcance da visão; ele some com a névoa ao apertar V.
 
 ## Câmera e zoom (`main.py`)
 

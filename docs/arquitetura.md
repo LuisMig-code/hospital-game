@@ -4,7 +4,7 @@
 
 | Módulo | Responsabilidade | Principais nomes |
 |---|---|---|
-| `main.py` | Janela, loop principal, input, câmera, zoom, névoa e HUD | `Game`, `build_map_surface`, `build_grid_surface`, `build_vision_circle` |
+| `main.py` | Janela, loop principal, input, câmera, zoom, névoa e HUD | `Game`, `build_map_surface`, `build_grid_surface` |
 | `settings.py` | Constantes (tela, cores, velocidades, estamina, visão, zoom) | — |
 | `dungeon.py` | Gera o grid da dungeon a partir da seed | `generate`, `Dungeon`, `Room`, `WALL`, `FLOOR`, `normalize_seed` |
 | `player.py` | Movimento tile a tile, corrida, estamina, animação | `Player`, `tile_center` |
@@ -46,8 +46,7 @@ O mundo é desenhado numa superfície do tamanho da área visível (`view_size()
 2. grid (só sobre o piso), se ligado;
 3. névoa (`fog_surf`): preto no não descoberto, escurecido no já descoberto;
 4. tiles dentro da visão redesenhados por cima da névoa (cores normais);
-5. círculo de visão em volta do personagem;
-6. personagem.
+5. personagem.
 
 O HUD (seed, tile, zoom, estamina) é desenhado direto na tela, depois da escala, para não mudar de tamanho com o zoom.
 

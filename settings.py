@@ -32,8 +32,6 @@ COLOR_TEXT = (255, 255, 255)
 
 # Visão (névoa de guerra)
 VISION_RADIUS = 8               # raio de visão em tiles
-COLOR_VISION_CIRCLE = (255, 240, 180, 110)  # contorno do círculo de visão (RGBA)
-VISION_CIRCLE_WIDTH = 2         # espessura do contorno em px
 FOG_EXPLORED_ALPHA = 160        # escurecimento do já descoberto fora da visão (0-255)
 COLOR_UNEXPLORED = (0, 0, 0)
 

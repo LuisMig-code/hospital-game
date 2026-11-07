@@ -31,8 +31,6 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | Constante | Valor | Descrição |
 |---|---|---|
 | `VISION_RADIUS` | 8 | Raio de visão em tiles |
-| `COLOR_VISION_CIRCLE` | (255, 240, 180, 110) | Cor do círculo de visão (o último valor é a opacidade) |
-| `VISION_CIRCLE_WIDTH` | 2 | Espessura do círculo em px |
 | `FOG_EXPLORED_ALPHA` | 160 | Escurecimento do já descoberto (0 = nada, 255 = preto) |
 | `COLOR_UNEXPLORED` | (0, 0, 0) | Cor do não descoberto |
 

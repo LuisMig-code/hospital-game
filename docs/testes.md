@@ -41,4 +41,4 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 venv\Scripts\python.exe main.py 42
 ```
 
-Confira: movimento alinhado ao grid, corrida e barra de estamina, névoa e círculo de visão, zoom 1x/2x, R/G/V.
+Confira: movimento alinhado ao grid, corrida e barra de estamina, névoa de guerra, zoom 1x/2x, R/G/V.

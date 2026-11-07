@@ -7,7 +7,6 @@ Uso:
 Controles: WASD/setas movem, Shift corre, +/- zoom, R gera nova dungeon,
 G liga/desliga o grid, V liga/desliga a névoa, ESC sai.
 """
-import math
 import random
 import sys
 
@@ -45,18 +44,6 @@ def build_grid_surface(dungeon):
     return surf
 
 
-def build_vision_circle():
-    """Contorno semitransparente do alcance da visão. O raio acompanha o
-    critério de fov.in_radius (dx² + dy² <= r² + r), medido em pixels."""
-    r = S.VISION_RADIUS
-    radius = round(math.sqrt(r * r + r) * S.TILE)
-    size = 2 * radius + 4
-    surf = pygame.Surface((size, size), pygame.SRCALPHA)
-    pygame.draw.circle(surf, S.COLOR_VISION_CIRCLE, (size // 2, size // 2), radius,
-                       S.VISION_CIRCLE_WIDTH)
-    return surf
-
-
 class Game:
     def __init__(self, seed):
         pygame.init()
@@ -72,7 +59,6 @@ class Game:
             self.tiles = None
         self.show_grid = True
         self.show_fog = True
-        self.vision_circle = build_vision_circle()
         self.zoom_index = S.ZOOM_DEFAULT
         self.new_level(seed)
 
@@ -134,10 +120,6 @@ class Game:
                 view.blit(self.map_surf, pos, area)
                 if self.show_grid:
                     view.blit(self.grid_surf, pos, area)
-        if self.show_fog:
-            c = self.vision_circle
-            view.blit(c, c.get_rect(center=(round(self.player.x - cam[0]),
-                                            round(self.player.y - cam[1]))))
         self.player.draw(view, cam)
         size = (S.SCREEN_W, S.SCREEN_H)
         if self.zoom == 1:

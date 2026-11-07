@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-07 — Remoção do círculo de visão
+- Círculo branco em volta do personagem removido (o alcance continua 8 tiles, só não é mais desenhado).
+
 ## 2026-11-07 — Visão maior, círculo de visão, zoom e documentação
 - Raio de visão aumentado de 5 para **8 tiles**.
 - **Círculo** semitransparente em volta do personagem mostrando o alcance da visão (some com V).
