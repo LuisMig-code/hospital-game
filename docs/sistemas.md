@@ -54,8 +54,8 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 | Situação | Efeito por segundo |
 |---|---|
 | Correndo (Shift + andando) | −25 (`STAMINA_DRAIN`) |
-| Andando normal | +5 (`STAMINA_REGEN_WALK`) |
-| Parado | +10 (`STAMINA_REGEN_IDLE`) |
+| Andando normal | +10 (`STAMINA_REGEN_WALK`) |
+| Parado | +20 (`STAMINA_REGEN_IDLE`) |
 
 - Começa e vai no máximo até 100.
 - **Cansaço**: ao chegar a 0, o personagem fica "cansado" e não corre até a estamina voltar a 20 (`STAMINA_RECOVER_TO_RUN`). Isso evita que ele fique alternando entre correr e andar com a estamina perto de zero.

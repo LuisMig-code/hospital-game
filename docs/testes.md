@@ -28,7 +28,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Soltando a tecla no meio de um passo, o personagem termina **exatamente no centro de um tile** e nunca entra em parede.
 - A velocidade é 150 × 1,3 px/s.
 - Correndo, percorre 2x a distância de andando.
-- Estamina: gasta 25/s correndo, zera e deixa o personagem cansado (não corre até recuperar 20), recupera 5/s andando e 10/s parado, e não passa de 100.
+- Estamina: gasta 25/s correndo, zera e deixa o personagem cansado (não corre até recuperar 20), recupera 10/s andando e 20/s parado, e não passa de 100.
 
 ### `tests/test_fov.py`
 - A origem é sempre visível; nada fora do raio é visível.

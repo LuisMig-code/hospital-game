@@ -57,8 +57,8 @@ ANIM_FPS = 13                   # frames de animação por segundo (2x correndo)
 # Estamina
 STAMINA_MAX = 100
 STAMINA_DRAIN = 25              # gasto por segundo correndo (100 -> 0 em 4 s)
-STAMINA_REGEN_IDLE = 10         # recuperação por segundo parado
-STAMINA_REGEN_WALK = 5          # recuperação por segundo andando normal
+STAMINA_REGEN_IDLE = 20         # recuperação por segundo parado
+STAMINA_REGEN_WALK = 10         # recuperação por segundo andando normal
 STAMINA_RECOVER_TO_RUN = 20     # ao zerar, fica "cansado" até recuperar isso
 
 # Zumbis

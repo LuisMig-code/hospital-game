@@ -68,18 +68,20 @@ class PlayerTests(unittest.TestCase):
         self.assertTrue(p.exhausted)                       # esgotou
         self.assertFalse(p.running)                        # não corre mais
         # cansado: mesmo segurando Shift não corre até recuperar o mínimo
-        run(p, Keys({pygame.K_d: True, pygame.K_LSHIFT: True}), 3.0, f)
+        # tempo para recuperar só 80% do que falta até poder correr de novo
+        tired = 0.8 * (S.STAMINA_RECOVER_TO_RUN - p.stamina) / S.STAMINA_REGEN_WALK
+        run(p, Keys({pygame.K_d: True, pygame.K_LSHIFT: True}), tired, f)
         self.assertFalse(p.running)
         self.assertLess(p.stamina, S.STAMINA_RECOVER_TO_RUN)
 
         run(p, Keys({pygame.K_d: True}), 0.5, f)           # termina o passo
         s0 = p.stamina
-        run(p, Keys({pygame.K_d: True}), 2.0, f)           # andando: +1/s
+        run(p, Keys({pygame.K_d: True}), 2.0, f)           # andando: +STAMINA_REGEN_WALK/s
         self.assertAlmostEqual(p.stamina - s0, 2 * S.STAMINA_REGEN_WALK, delta=0.05)
 
         run(p, Keys(), 0.5, f)                             # para
         s0 = p.stamina
-        run(p, Keys(), 2.0, f)                             # parado: +3/s
+        run(p, Keys(), 2.0, f)                             # parado: +STAMINA_REGEN_IDLE/s
         self.assertAlmostEqual(p.stamina - s0, 2 * S.STAMINA_REGEN_IDLE, delta=0.05)
 
         run(p, Keys(), 100, f)

@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-09 — Recuperação de estamina 2x mais rápida
+- Andando: de +5/s para **+10/s**; parado: de +10/s para **+20/s** (o gasto correndo continua −25/s).
+
 ## 2026-11-09 — Zumbis
 - Sprite do zumbi recortada (`assets/monster/zombie_spritesheet_32x32.png`): parado, andando nas 4 direções e saindo do chão; fundo magenta e franja roxa removidos; escala 2×.
 - 3 a 5 zumbis enterrados por sala; saem do chão quando o personagem os vê pela primeira vez.

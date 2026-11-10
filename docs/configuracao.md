@@ -64,8 +64,8 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 |---|---|---|
 | `STAMINA_MAX` | 100 | Estamina máxima e inicial |
 | `STAMINA_DRAIN` | 25 | Gasto por segundo correndo |
-| `STAMINA_REGEN_WALK` | 5 | Recuperação por segundo andando |
-| `STAMINA_REGEN_IDLE` | 10 | Recuperação por segundo parado |
+| `STAMINA_REGEN_WALK` | 10 | Recuperação por segundo andando |
+| `STAMINA_REGEN_IDLE` | 20 | Recuperação por segundo parado |
 | `STAMINA_RECOVER_TO_RUN` | 20 | Ao zerar, só volta a correr com essa estamina |
 
 ## Geração da dungeon (em `dungeon.py`)
