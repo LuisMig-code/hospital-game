@@ -78,8 +78,9 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 ## Câmera e zoom (`main.py`)
 
 - Câmera centrada no personagem, limitada às bordas do mapa.
-- Zoom com `+`/`-` entre os níveis de `ZOOM_LEVELS` (hoje 1x e 2x). O mundo é desenhado numa superfície de tamanho tela ÷ zoom e escalado: aproximando usa `scale` (pixels nítidos), afastando usaria `smoothscale`.
-- A tecla `+` também responde ao `=` (com ou sem Shift) e ao teclado numérico.
+- Zoom pela **roda do mouse**, contínuo entre `ZOOM_MIN` (1x) e `ZOOM_MAX` (2x). Cada clique da roda muda o **alvo** em `ZOOM_STEP` (0,1); em touchpads usa `precise_y` (frações de clique), então o scroll também é contínuo. O alvo é arredondado (dez cliques dão 2.0 exato, não 1.9999999).
+- **Transição suave**: a cada quadro o zoom anda uma fração da distância até o alvo (`1 - e^(-ZOOM_SMOOTHING·dt)`), independente do FPS — chega a ~95% em 0,25 s e encaixa no alvo quando a diferença fica mínima.
+- O mundo é desenhado numa superfície de tamanho tela ÷ zoom e escalado para a tela: em 1x sem escala, em exatamente 2x com `scale` (pixels nítidos) e nos zooms fracionários (1,3x, 1,7x...) com `smoothscale`, para não serrilhar (custa ~1–2 ms). A câmera continua centrada no personagem.
 
 ## Renderização do mapa (`tileset.py`)
 

@@ -1,0 +1,90 @@
+"""Testes do zoom suave pela roda do mouse."""
+import os
+import sys
+import unittest
+from pathlib import Path
+
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import pygame  # noqa: E402
+
+import main  # noqa: E402
+import settings as S  # noqa: E402
+
+DT = 1 / 60
+
+
+class ZoomTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.game = main.Game(42)
+        cls.initial = (cls.game.zoom, cls.game.zoom_target)
+
+    def setUp(self):
+        self.game.zoom = self.game.zoom_target = S.ZOOM_MIN
+
+    def settle(self, seconds=2.0):
+        zs = []
+        for _ in range(round(seconds / DT)):
+            self.game.update_zoom(DT)
+            zs.append(self.game.zoom)
+        return zs
+
+    def test_starts_at_1x_and_limits(self):
+        self.assertEqual(self.initial, (1.0, 1.0))
+        self.assertEqual((S.ZOOM_MIN, S.ZOOM_MAX), (1.0, 2.0))
+
+    def test_wheel_changes_target_and_clamps(self):
+        g = self.game
+        g.change_zoom(+3)
+        self.assertAlmostEqual(g.zoom_target, 1.0 + 3 * S.ZOOM_STEP)
+        g.change_zoom(+100)
+        self.assertEqual(g.zoom_target, S.ZOOM_MAX)          # não passa de 2x
+        g.change_zoom(-100)
+        self.assertEqual(g.zoom_target, S.ZOOM_MIN)          # não passa de 1x
+        g.change_zoom(0.25)                                  # touchpad: fração de clique
+        self.assertAlmostEqual(g.zoom_target, 1.0 + 0.25 * S.ZOOM_STEP)
+
+    def test_ten_clicks_reach_exactly_2x(self):
+        g = self.game
+        for _ in range(10):
+            g.change_zoom(+1)
+        self.assertEqual(g.zoom_target, 2.0)                 # sem 1.9999999
+        self.settle()
+        self.assertEqual(g.zoom, 2.0)
+
+    def test_transition_is_smooth(self):
+        g = self.game
+        g.change_zoom(+10)
+        zs = self.settle(1.0)
+        self.assertGreater(zs[0], 1.0)                       # já começa a mudar
+        self.assertLess(zs[0], 1.5)                          # mas não pula de uma vez
+        self.assertEqual(zs, sorted(zs))                     # só aumenta, sem passar do alvo
+        self.assertTrue(all(z <= 2.0 for z in zs))
+        steps = [b - a for a, b in zip(zs, zs[1:])]
+        self.assertLess(max(steps), 0.25)                    # nenhum salto grande
+        self.assertEqual(zs[-1], 2.0)
+
+    def test_mousewheel_event(self):
+        g = self.game
+        pygame.event.clear()
+        pygame.event.post(pygame.event.Event(pygame.MOUSEWHEEL, x=0, y=2, precise_x=0.0, precise_y=2.0, flipped=False))
+        for e in pygame.event.get():
+            if e.type == pygame.MOUSEWHEEL:
+                g.change_zoom(getattr(e, "precise_y", e.y))
+        self.assertAlmostEqual(g.zoom_target, 1.0 + 2 * S.ZOOM_STEP)
+
+    def test_draw_at_fractional_zoom(self):
+        g = self.game
+        for z in (1.0, 1.37, 1.5, 2.0):
+            g.zoom = g.zoom_target = z
+            vw, vh = g.view_size()
+            self.assertAlmostEqual(vw, S.SCREEN_W / z, delta=1)
+            self.assertAlmostEqual(vh, S.SCREEN_H / z, delta=1)
+            g.draw_world()                                   # não pode quebrar em zoom fracionário
+            self.assertEqual(g.screen.get_size(), (S.SCREEN_W, S.SCREEN_H))
+
+
+if __name__ == "__main__":
+    unittest.main()

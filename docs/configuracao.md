@@ -10,8 +10,10 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `SCREEN_W`, `SCREEN_H` | 1280, 720 | Tamanho da janela |
 | `FPS` | 60 | Frames por segundo |
 | `MAP_W`, `MAP_H` | 80, 60 | Tamanho do mapa em tiles |
-| `ZOOM_LEVELS` | (1.0, 2.0) | Níveis de zoom disponíveis (`+`/`-`) |
-| `ZOOM_DEFAULT` | 0 | Índice do zoom inicial em `ZOOM_LEVELS` |
+| `ZOOM_MIN` | 1.0 | Zoom mais afastado (e inicial) |
+| `ZOOM_MAX` | 2.0 | Zoom mais aproximado |
+| `ZOOM_STEP` | 0.1 | Quanto cada clique da roda do mouse muda o zoom |
+| `ZOOM_SMOOTHING` | 12 | Velocidade da transição suave (maior = chega mais rápido) |
 
 ## Cores e visual
 

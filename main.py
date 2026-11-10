@@ -4,7 +4,7 @@ Uso:
     venv\\Scripts\\python.exe main.py            # seed aleatória
     venv\\Scripts\\python.exe main.py 12345      # seed específica (número ou texto)
 
-Controles: WASD/setas movem, Shift corre, +/- zoom, R gera nova dungeon,
+Controles: WASD/setas movem, Shift corre, roda do mouse dá zoom, R gera nova dungeon,
 G liga/desliga o grid, V liga/desliga a névoa, Espaço abre/fecha portas, ESC sai.
 """
 import math
@@ -69,7 +69,8 @@ class Game:
         self.show_grid = True
         self.show_fog = True
         self.message, self.message_until = "", 0
-        self.zoom_index = S.ZOOM_DEFAULT
+        self.zoom = S.ZOOM_MIN             # zoom atual (vai suavemente até o alvo)
+        self.zoom_target = S.ZOOM_MIN      # zoom pedido pela roda do mouse
         self.new_level(seed)
 
     def new_level(self, seed):
@@ -103,12 +104,21 @@ class Game:
         if self.vision.visible != self.fog.visible:
             self.fog.update(self.vision.visible)
 
-    @property
-    def zoom(self):
-        return S.ZOOM_LEVELS[self.zoom_index]
+    def change_zoom(self, notches):
+        """Roda do mouse: cada "clique" muda o alvo em ZOOM_STEP (para cima
+        aproxima). O zoom de verdade chega lá aos poucos em update_zoom."""
+        target = self.zoom_target + notches * S.ZOOM_STEP
+        # arredonda: somar 0.1 dez vezes dá 1.9999999, e 2.0 exato usa escala nítida
+        self.zoom_target = round(max(S.ZOOM_MIN, min(S.ZOOM_MAX, target)), 3)
 
-    def change_zoom(self, step):
-        self.zoom_index = max(0, min(len(S.ZOOM_LEVELS) - 1, self.zoom_index + step))
+    def update_zoom(self, dt):
+        """Aproxima o zoom do alvo com amortecimento exponencial (suave e
+        independente do FPS); encaixa no alvo quando a diferença é mínima."""
+        diff = self.zoom_target - self.zoom
+        if abs(diff) < 0.002:
+            self.zoom = self.zoom_target
+        else:
+            self.zoom += diff * (1 - math.exp(-S.ZOOM_SMOOTHING * dt))
 
     def view_size(self):
         """Tamanho (em pixels do mundo) da área visível com o zoom atual."""
@@ -140,11 +150,11 @@ class Game:
             fog, pos = self.fog.render(cam, view.get_size())
             view.blit(fog, pos)
         size = (S.SCREEN_W, S.SCREEN_H)
-        if self.zoom == 1:
+        if view.get_size() == size:
             self.screen.blit(view, (0, 0))
-        elif self.zoom > 1:   # aproximar: pixels nítidos
+        elif float(self.zoom).is_integer():   # 2x exato: pixels nítidos
             pygame.transform.scale(view, size, self.screen)
-        else:                 # afastar: suavizado para não serrilhar
+        else:                                 # zoom fracionário: suavizado, sem serrilhar
             pygame.transform.smoothscale(view, size, self.screen)
 
     def draw_actors(self, view, cam):
@@ -185,8 +195,8 @@ class Game:
     def draw_hud(self):
         p = self.player
         tx, ty = p.tile
-        hud = (f"Seed: {self.seed_label}   Tile: ({tx}, {ty})   Zoom: {self.zoom:g}x   "
-               "[Shift] correr [Espaço] porta [+/-] zoom [R] nova [G] grid [V] névoa [ESC] sair")
+        hud = (f"Seed: {self.seed_label}   Tile: ({tx}, {ty})   Zoom: {self.zoom:.1f}x   "
+               "[Shift] correr [Espaço] porta [Roda] zoom [R] nova [G] grid [V] névoa [ESC] sair")
         showing_msg = self.message and pygame.time.get_ticks() < self.message_until
 
         # Painel semitransparente atrás do HUD
@@ -239,17 +249,15 @@ class Game:
                     self.show_fog = not self.show_fog
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
                     self.toggle_door()
-                if e.type == pygame.KEYDOWN:
-                    # "+" pode vir da tecla "=" (com ou sem Shift) ou do teclado numérico
-                    if e.key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS) or e.unicode == "+":
-                        self.change_zoom(+1)
-                    elif e.key in (pygame.K_MINUS, pygame.K_KP_MINUS) or e.unicode == "-":
-                        self.change_zoom(-1)
+                if e.type == pygame.MOUSEWHEEL:
+                    # precise_y: frações de "clique" em touchpads (scroll contínuo)
+                    self.change_zoom(getattr(e, "precise_y", e.y))
 
             self.horde.update(dt, self.player, self.vision.visible)
             self.player.update(dt, pygame.key.get_pressed(), self.dungeon,
                                blocked=self.horde.blocked_tiles())
             self.light.update(dt)
+            self.update_zoom(dt)
             self.update_vision()
 
             self.draw_world()

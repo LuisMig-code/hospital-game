@@ -2,6 +2,10 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-09 — Zoom pela roda do mouse
+- Teclas `+`/`-` substituídas pela **roda do mouse**: zoom contínuo de 1x a 2x (0,1 por clique, frações em touchpad), com transição suave.
+- Zooms fracionários escalados com `smoothscale`; 1x e 2x continuam nítidos.
+
 ## 2026-11-09 — Recuperação de estamina 2x mais rápida
 - Andando: de +5/s para **+10/s**; parado: de +10/s para **+20/s** (o gasto correndo continua −25/s).
 

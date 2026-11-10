@@ -34,7 +34,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 | WASD / setas | Andar (um tile por vez; segurando, anda contínuo) |
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
 | Espaço | Abrir/fechar a porta à frente do personagem |
-| `+` / `-` | Zoom 1x ↔ 2x |
+| Roda do mouse | Zoom contínuo e suave entre 1x e 2x (para cima aproxima) |
 | R | Gerar nova dungeon (seed aleatória) |
 | G | Mostrar/esconder o grid |
 | V | Ligar/desligar a névoa de guerra e a iluminação (mostra o mapa inteiro) |

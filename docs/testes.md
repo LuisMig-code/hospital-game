@@ -53,6 +53,12 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Zumbi enterrado não bloqueia o personagem; fora do chão, bloqueia. Não acorda com o personagem em cima.
 - Sprite: quantidade de quadros por animação, tamanho 64×64, nenhum pixel magenta/roxo sobrando.
 
+### `tests/test_zoom.py`
+- Começa em 1x; limites 1x e 2x.
+- A roda muda o alvo em `ZOOM_STEP` por clique, aceita frações (touchpad) e não passa dos limites; dez cliques dão exatamente 2.0.
+- A transição é suave: começa a mudar no primeiro quadro, sem pular de uma vez, só cresce, sem passar do alvo e sem saltos grandes; termina exatamente no alvo.
+- Evento `MOUSEWHEEL` muda o alvo; o desenho funciona em zooms fracionários.
+
 ### `tests/test_tileset.py`
 - O recorte encontra as 10 peças na ordem esperada (pisos em cima, portas embaixo, proporções corretas).
 - Nenhum pixel do contorno roxo sobra nas peças.
@@ -67,4 +73,4 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 venv\Scripts\python.exe main.py 42
 ```
 
-Confira: zumbis saindo do chão ao entrar numa sala e vagando sem atravessar o personagem, nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom 1x/2x, R/G/V.
+Confira: zumbis saindo do chão ao entrar numa sala e vagando sem atravessar o personagem, nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom suave pela roda do mouse (1x a 2x), R/G/V.

@@ -12,9 +12,11 @@ TILE = 32
 SCREEN_W, SCREEN_H = 1280, 720
 FPS = 60
 
-# Zoom da câmera (teclas + e -)
-ZOOM_LEVELS = (1.0, 2.0)        # normal, aproximado
-ZOOM_DEFAULT = 0                # índice em ZOOM_LEVELS (começa no normal)
+# Zoom da câmera (roda do mouse, contínuo e suave)
+ZOOM_MIN = 1.0                  # mais afastado (e zoom inicial)
+ZOOM_MAX = 2.0                  # mais aproximado
+ZOOM_STEP = 0.1                 # quanto cada "clique" da roda muda o zoom
+ZOOM_SMOOTHING = 12             # velocidade da transição (maior = chega mais rápido)
 
 # Mapa (em tiles)
 MAP_W, MAP_H = 80, 60

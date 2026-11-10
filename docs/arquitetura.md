@@ -41,12 +41,13 @@ sprites ► settings
    - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn);
    - cria a `Vision` e a névoa (`FogLayer`, toda preta).
 3. A cada frame (`Game.run`):
-   - eventos de teclado (R, G, V, +/-, Espaço, ESC);
+   - eventos de teclado (R, G, V, Espaço, ESC) e da roda do mouse (`MOUSEWHEEL` → `change_zoom`);
    - Espaço → `toggle_door()`: `try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada (`update_vision(force=True)`);
    - `horde.update(dt, player, vision.visible)` — acorda os zumbis vistos e move os ativos;
    - `player.update(dt, teclas, dungeon, blocked=horde.blocked_tiles())` — zumbis ativos bloqueiam;
    - `update_vision()` — recalcula a visão se o personagem mudou de tile e atualiza a névoa (`FogLayer.update`);
    - `light.update(dt)` — tremulação da luz;
+   - `update_zoom(dt)` — o zoom anda suavemente até o alvo pedido pela roda;
    - `draw_world()` e `draw_hud()`.
 
 ## Ordem de desenho (`draw_world`)
@@ -59,7 +60,7 @@ O mundo é desenhado numa superfície do tamanho da área visível (`view_size()
 4. sobreposição: a metade de cima de uma porta da parede de cima, semitransparente, se o personagem está atrás dela (`draw_door_overlap`);
 5. luz em volta do personagem (`Light.draw`) e névoa suave (`FogLayer.render`) — as duas só com a névoa ligada (V).
 
-O HUD (seed, tile, zoom, estamina, mensagens temporárias) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto,, depois da escala, para não mudar de tamanho com o zoom.
+O HUD (seed, tile, zoom, estamina, mensagens temporárias) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto, depois da escala, para não mudar de tamanho com o zoom.
 
 ## Coordenadas
 
