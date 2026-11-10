@@ -130,7 +130,7 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 | `underground` | Enterrado e invisível, esperando ser visto. | não |
 | `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (8 quadros, 1 s). | sim |
 | `idle` | Pausa entre caminhadas (`ZOMBIE_IDLE_TIME`, hoje **0**: emenda direto na próxima caminhada). Cercado, sem direção livre, espera 0,1–0,3 s e tenta de novo. | sim |
-| `chase` | Personagem a até **3 tiles** (Chebyshev, `ZOMBIE_CHASE_RADIUS`): vai atrás dele a 70 px/s (`ZOMBIE_CHASE_SPEED`) e, colado nele, ataca (veja "Vida do personagem"). | sim |
+| `chase` | Personagem a até **5 tiles** (Chebyshev, `ZOMBIE_CHASE_RADIUS`): vai atrás dele a 70 px/s (`ZOMBIE_CHASE_SPEED`) e, colado nele, ataca (veja "Vida do personagem"). | sim |
 | `walk` | Sorteia uma das **8 direções** livres (retas ou diagonais) e anda 1–4 tiles nela (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`) — na diagonal, mesma velocidade em px/s. Depois volta a `idle`. | sim |
 | `dying` | Vida chegou a 0: toca a animação de surgir **ao contrário** (afunda de volta no chão, `ZOMBIE_DEATH_FPS`). Não leva mais dano. | não |
 | `dead` | Terminou de afundar: sai do jogo e conta em "Abatidos". | — |
@@ -142,9 +142,9 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 
 ### Perseguição
 - Vale para zumbis fora do chão e vivos (`idle`/`walk`/`chase`); o personagem morto não é perseguido. A troca entre vagar e perseguir só acontece com o zumbi parado no centro de um tile (nunca no meio de um passo).
-- A cada tile, `chase_step` faz uma **busca em largura** curta (8 direções, sem cortar quina, sem paredes, portas fechadas, outros zumbis nem o personagem; até 9 tiles do personagem) e dá o primeiro passo do caminho mais curto até um tile **colado** nele. Sem caminho, espera virado para ele.
+- A cada tile, `chase_step` faz uma **busca em largura** curta (8 direções, sem cortar quina, sem paredes, portas fechadas, outros zumbis nem o personagem; até 11 tiles do personagem) e dá o primeiro passo do caminho mais curto até um tile **colado** nele. Sem caminho, espera virado para ele.
 - Perseguindo pode **sair da sala** por portas abertas e corredores; porta fechada segura o zumbi.
-- Com o personagem a mais de 3 tiles, volta a vagar **onde está**: na sala em que estiver (passa a ser a sala dele) ou, num corredor, pelo corredor (qualquer chão menos as portas) até entrar numa sala.
+- Com o personagem a mais de 5 tiles, volta a vagar **onde está**: na sala em que estiver (passa a ser a sala dele) ou, num corredor, pelo corredor (qualquer chão menos as portas) até entrar numa sala.
 - O Espaço não fecha uma porta com zumbi dentro ("Tem um zumbi na porta!").
 
 ### Desenho

@@ -74,7 +74,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Também andam na diagonal, sempre para um tile vizinho, sem cortar quina, com sprite horizontal e a mesma velocidade em px/s.
 - Sem pausa entre caminhadas: andam mais de 90% do tempo; parada mais longa só quando cercados (≤ 0,3 s).
 - Zumbi enterrado não bloqueia o personagem; fora do chão, bloqueia. Não acorda com o personagem em cima.
-- Perseguição: começa a 3 tiles e não a 4; chega colado e bate com preparo e intervalo certos; passa por porta aberta mas não por fechada; contorna parede; não bate através de quina; longe do personagem volta a vagar na sala em que está; personagem morto, zumbi enterrado ou morrendo não perseguem. Numa dungeon real, com o personagem parado perto: batem nele sem ninguém entrar no tile dele ou de outro zumbi.
+- Perseguição: começa a `ZOMBIE_CHASE_RADIUS` tiles (5) e não a 6; chega colado e bate com preparo e intervalo certos; passa por porta aberta mas não por fechada; contorna parede; não bate através de quina; longe do personagem volta a vagar na sala em que está; personagem morto, zumbi enterrado ou morrendo não perseguem. Numa dungeon real, com o personagem parado perto: batem nele sem ninguém entrar no tile dele ou de outro zumbi.
 - Sprite: quantidade de quadros por animação, tamanho 64×64, nenhum pixel magenta/roxo sobrando.
 
 ### `tests/test_zoom.py`

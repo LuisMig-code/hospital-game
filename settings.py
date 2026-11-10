@@ -89,7 +89,7 @@ DAMAGE_TEXT_TIME = 0.7          # segundos do número de dano flutuando
 # Vida do personagem e ataque dos zumbis
 PLAYER_HP = 10                  # vida do personagem
 ZOMBIE_DAMAGE = 2               # dano de cada golpe de zumbi
-ZOMBIE_CHASE_RADIUS = 3         # zumbis a até 3 tiles (Chebyshev) perseguem o personagem
+ZOMBIE_CHASE_RADIUS = 5         # zumbis a até 5 tiles (Chebyshev) perseguem o personagem
 ZOMBIE_CHASE_SPEED = 70         # pixels por segundo perseguindo (vagando: ZOMBIE_SPEED)
 ZOMBIE_CHASE_SEARCH = 6         # o caminho é procurado até essa distância além do raio
 ZOMBIE_ATTACK_WINDUP = 0.4      # segundos preparando o golpe, colado no personagem

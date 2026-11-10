@@ -254,10 +254,11 @@ class ChaseTests(unittest.TestCase):
     def test_starts_chasing_within_radius_only(self):
         d = open_room(10)
         z = self.zombie(d, (1, 2))
-        z.update(DT, d, {(5, 2)}, self.rng, (5, 2))                     # a 4 tiles
+        r = S.ZOMBIE_CHASE_RADIUS
+        z.update(DT, d, {(2 + r, 2)}, self.rng, (2 + r, 2))             # a r + 1 tiles
         self.assertNotEqual(z.state, CHASE)
         z = self.zombie(d, (1, 2))
-        z.update(DT, d, {(4, 2)}, self.rng, (4, 2))                     # a 3 tiles
+        z.update(DT, d, {(1 + r, 2)}, self.rng, (1 + r, 2))             # a r tiles
         self.assertEqual(z.state, CHASE)
 
     def test_reaches_and_hits_with_windup_and_cooldown(self):

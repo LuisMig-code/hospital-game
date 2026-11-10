@@ -111,7 +111,7 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 |---|---|---|
 | `PLAYER_HP` | 10 | Vida do personagem |
 | `ZOMBIE_DAMAGE` | 2 | Dano de cada golpe de zumbi |
-| `ZOMBIE_CHASE_RADIUS` | 3 | Distância (tiles, Chebyshev) em que o zumbi persegue |
+| `ZOMBIE_CHASE_RADIUS` | 5 | Distância (tiles, Chebyshev) em que o zumbi persegue |
 | `ZOMBIE_CHASE_SPEED` | 70 | Velocidade perseguindo, em px/s |
 | `ZOMBIE_CHASE_SEARCH` | 6 | Quanto além do raio a busca do caminho pode ir |
 | `ZOMBIE_ATTACK_WINDUP` | 0.4 | Segundos preparando o golpe |

@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-10 — Zumbis enxergam mais longe
+- Raio de perseguição dos zumbis aumentado de 3 para **5 tiles** (`ZOMBIE_CHASE_RADIUS`).
+
 ## 2026-11-10 — Zumbi lançado pelo golpe
 - Zumbi que sobrevive ao golpe do personagem é **lançado 1 tile para o lado oposto** a ele (8 direções, 0,15 s); parede, porta fechada ou outro zumbi atrás seguram. Cancela o passo e o preparo do golpe do zumbi.
 

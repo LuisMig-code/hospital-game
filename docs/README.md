@@ -35,7 +35,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
 | Espaço | Se há uma porta à frente (ou o personagem está numa): abre/fecha. Senão: **ataca** com a faca na direção em que ele está virado (dano em área) |
 
-Vida: o personagem tem **10**; zumbis a até 3 tiles vão atrás dele e cada golpe tira **2** e o empurra para longe do zumbi. Zumbi que sobrevive a um golpe da faca também é lançado 1 tile para longe. Vida 0 é **game over** e a mesma dungeon recomeça.
+Vida: o personagem tem **10**; zumbis a até 5 tiles vão atrás dele e cada golpe tira **2** e o empurra para longe do zumbi. Zumbi que sobrevive a um golpe da faca também é lançado 1 tile para longe. Vida 0 é **game over** e a mesma dungeon recomeça.
 | Roda do mouse | Zoom contínuo e suave entre 1x e 2x (para cima aproxima) |
 | R | Gerar nova dungeon (seed aleatória) |
 | G | Mostrar/esconder o grid |
