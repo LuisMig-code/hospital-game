@@ -44,6 +44,7 @@ def main():
     pygame.image.save(preview, str(out / "preview.png"))
     print(f"Frames salvos em {out}")
     export_tileset()
+    export_zombie()
 
 
 def export_tileset():
@@ -66,6 +67,27 @@ def export_tileset():
         print(f"{name:20s} {img.get_size()}")
     pygame.image.save(preview, str(out / "preview.png"))
     print(f"Peças do tileset salvas em {out}")
+
+
+
+def export_zombie():
+    """Salva os quadros do zumbi (sem escala) e um preview ampliado sobre fundo escuro."""
+    from sprites import load_zombie_animations
+
+    out = ASSETS / "monster" / "frames"
+    out.mkdir(parents=True, exist_ok=True)
+    anims = load_zombie_animations(raw=True)
+    scale = 4
+    cols = max(len(f) for f in anims.values())
+    preview = pygame.Surface((cols * 32 * scale, len(anims) * 32 * scale))
+    preview.fill((40, 45, 45))
+    for r, (name, frames) in enumerate(anims.items()):
+        for c, img in enumerate(frames):
+            pygame.image.save(img, str(out / f"{name}_{c}.png"))
+            preview.blit(pygame.transform.scale(img, (32 * scale, 32 * scale)), (c * 32 * scale, r * 32 * scale))
+        print(f"zumbi {name:11s} {len(frames)} quadros")
+    pygame.image.save(preview, str(out / "preview.png"))
+    print(f"Quadros do zumbi salvos em {out}")
 
 
 if __name__ == "__main__":

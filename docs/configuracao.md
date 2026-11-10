@@ -75,3 +75,15 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `MIN_LEAF` | 14 | Tamanho mínimo de uma divisão da BSP (controla o número e o tamanho das salas) |
 | `MIN_ROOM` | 6 | Tamanho mínimo de uma sala |
 | `CORRIDOR_WIDTHS` | (2, 3) | Larguras possíveis dos corredores |
+
+## Zumbis
+
+| Constante | Valor | Descrição |
+|---|---|---|
+| `ZOMBIE_SIZE` | 64 | Tamanho do sprite na tela (quadro de 32 px escalado 2×) |
+| `ZOMBIES_PER_ROOM` | (3, 5) | Mínimo e máximo de zumbis por sala |
+| `ZOMBIE_SPEED` | 45 | Velocidade andando, em px/s |
+| `ZOMBIE_IDLE_TIME` | (1.0, 4.0) | Tempo parado entre caminhadas, em segundos |
+| `ZOMBIE_WANDER_STEPS` | (1, 4) | Tiles andados em cada caminhada |
+| `ZOMBIE_ANIM_FPS` | 6 | Quadros por segundo parado/andando |
+| `ZOMBIE_EMERGE_FPS` | 8 | Quadros por segundo saindo do chão (8 quadros = 1 s) |

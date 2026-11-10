@@ -108,3 +108,25 @@ O mapa inteiro é desenhado uma vez por dungeon (`render_map`) a partir das peç
 | **HUD** | Painel escuro semitransparente com cantos arredondados, texto com sombra de 1 px e barra de estamina arredondada. | `HUD_PANEL_ALPHA` |
 
 Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem abaixo dos 16 ms de 60 FPS.
+
+## Zumbis (`zombies.py`)
+
+### Spawn
+`spawn_zombies` (chamado por `Horde`) coloca **3 a 5 zumbis por sala** (`ZOMBIES_PER_ROOM`), em tiles de chão distintos dentro do retângulo da sala, sem encostar em portas e a mais de 2 tiles do spawn do personagem. Usa um `Random` derivado da seed: a mesma seed gera os mesmos zumbis nos mesmos lugares. Em 200 seeds, todas as salas ficaram com 3, 4 ou 5.
+
+### Estados
+| Estado | O que acontece | Bloqueia? |
+|---|---|---|
+| `underground` | Enterrado e invisível, esperando ser visto. | não |
+| `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (8 quadros, 1 s). | sim |
+| `idle` | Parado por 1–4 s (`ZOMBIE_IDLE_TIME`). | sim |
+| `walk` | Sorteia uma direção livre e anda 1–4 tiles (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`). Depois volta a `idle`. | sim |
+
+- O zumbi só anda para tiles **dentro da própria sala**, que sejam chão e estejam livres (sem o personagem nem outro zumbi — vale o tile atual e o de destino). Se não houver direção livre, espera um pouco e tenta de novo.
+- O personagem não entra em tile de zumbi fora do chão (`Player.update(..., blocked=...)`); zumbi enterrado não bloqueia.
+- Ainda não há dano nem perseguição: eles só vagam.
+
+### Desenho
+- Sprite 32×32 escalada 2× (64 px, `ZOMBIE_SIZE`) por vizinho mais próximo: pixel art nítida, mais ou menos da altura do personagem.
+- Mesma sombra elíptica do personagem (menos durante o buraco no chão, nos primeiros quadros do surgimento).
+- Ordenados por profundidade junto com o personagem; com a névoa ligada, só aparecem quando o tile em que estão desenhados está visível.

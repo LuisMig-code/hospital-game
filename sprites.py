@@ -6,7 +6,7 @@ canal alpha em vez de divisão fixa.
 """
 import pygame
 
-from settings import CHARACTER_SHEET, PLAYER_SPRITE_HEIGHT
+from settings import CHARACTER_SHEET, PLAYER_SPRITE_HEIGHT, ZOMBIE_SHEET, ZOMBIE_SIZE
 
 # Ordem das linhas no sheet
 ROW_NAMES = ["idle", "walk_right", "walk_left", "walk_up", "walk_down"]
@@ -143,4 +143,68 @@ def load_animations(target_height=PLAYER_SPRITE_HEIGHT, raw=False):
                 img = pygame.transform.smoothscale(img, size)
             surfs.append(img)
         anims[name] = surfs
+    return anims
+
+
+# --------------------------------------------------------------------- zumbi
+# Sheet do zumbi: grade uniforme de 32x32, fundo magenta. (linha, nome, quadros)
+ZOMBIE_ROWS = [
+    (0, "idle", 2),
+    (1, "walk_right", 4),
+    (2, "walk_left", 4),
+    (3, "walk_up", 4),
+    (4, "walk_down", 4),
+    (5, "emerge", 8),
+]
+ZOMBIE_FRAME = 32
+
+
+def is_magenta(color):
+    """Fundo magenta (e a franja quase-magenta na borda dos quadros)."""
+    return color.r > 200 and color.b > 200 and color.g < 80
+
+
+def is_purple_fringe(color):
+    """Pixels de transição entre o magenta e o desenho: vermelho e azul
+    parecidos e bem acima do verde (o sangue, vermelho, não entra)."""
+    lo = min(color.r, color.b)
+    return lo >= 25 and color.g < 0.5 * lo
+
+
+def _remove_magenta(img):
+    """Fundo magenta vira transparente. A franja roxa clara também; a
+    escura vira contorno quase preto (faz parte do traço do desenho)."""
+    w, h = img.get_size()
+    out = pygame.Surface((w, h), pygame.SRCALPHA)   # garante canal alpha
+    out.blit(img, (0, 0))
+    img = out
+    img.lock()
+    for y in range(h):
+        for x in range(w):
+            c = img.get_at((x, y))
+            if is_magenta(c):
+                img.set_at((x, y), (0, 0, 0, 0))
+            elif is_purple_fringe(c):
+                if max(c.r, c.b) > 90:
+                    img.set_at((x, y), (0, 0, 0, 0))
+                else:
+                    img.set_at((x, y), (22, 16, 20, 255))
+    img.unlock()
+    return img
+
+
+def load_zombie_animations(size=ZOMBIE_SIZE, raw=False):
+    """{nome: [Surface, ...]} do zumbi. Escala por vizinho mais próximo
+    (pixel art nítida). raw=True devolve os quadros de 32x32 sem escalar."""
+    sheet = _remove_magenta(pygame.image.load(str(ZOMBIE_SHEET)))
+    f = ZOMBIE_FRAME
+    anims = {}
+    for row, name, count in ZOMBIE_ROWS:
+        frames = []
+        for col in range(count):
+            img = sheet.subsurface((col * f, row * f, f, f)).copy()
+            if not raw and size != f:
+                img = pygame.transform.scale(img, (size, size))
+            frames.append(img)
+        anims[name] = frames
     return anims

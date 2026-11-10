@@ -46,6 +46,13 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Luz da borda + névoa compensada dão exatamente `FOG_EXPLORED_ALPHA` nos tiles descobertos.
 - Tremulação: desligada fica sempre no nível 0; ligada varia de nível.
 
+### `tests/test_zombies.py`
+- Em 60 seeds: cada sala com espaço tem de 3 a 5 zumbis, em tiles distintos de chão dentro da sala, todos enterrados e a mais de 2 tiles do spawn; a mesma seed gera os mesmos zumbis.
+- Ficam enterrados enquanto não são vistos; ao entrar na visão, saem do chão e depois ficam parados/andando; zumbis de outras salas continuam enterrados.
+- Simulando 60 s: nunca saem da sala, dois zumbis nunca ocupam o mesmo tile, nenhum entra no tile do personagem, e todos passam tempo parados e andando.
+- Zumbi enterrado não bloqueia o personagem; fora do chão, bloqueia. Não acorda com o personagem em cima.
+- Sprite: quantidade de quadros por animação, tamanho 64×64, nenhum pixel magenta/roxo sobrando.
+
 ### `tests/test_tileset.py`
 - O recorte encontra as 10 peças na ordem esperada (pisos em cima, portas embaixo, proporções corretas).
 - Nenhum pixel do contorno roxo sobra nas peças.
@@ -60,4 +67,4 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 venv\Scripts\python.exe main.py 42
 ```
 
-Confira: nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom 1x/2x, R/G/V.
+Confira: zumbis saindo do chão ao entrar numa sala e vagando sem atravessar o personagem, nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom 1x/2x, R/G/V.

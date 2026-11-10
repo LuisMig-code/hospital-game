@@ -2,6 +2,13 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-09 — Zumbis
+- Sprite do zumbi recortada (`assets/monster/zombie_spritesheet_32x32.png`): parado, andando nas 4 direções e saindo do chão; fundo magenta e franja roxa removidos; escala 2×.
+- 3 a 5 zumbis enterrados por sala; saem do chão quando o personagem os vê pela primeira vez.
+- Depois vagam pela própria sala: andam 1–4 tiles numa direção aleatória e ficam 1–4 s parados.
+- Zumbis bloqueiam o personagem (e uns aos outros); ainda sem dano.
+- Personagem e zumbis desenhados ordenados por profundidade, com sombra.
+
 ## 2026-11-09 — Correção: corte reto na iluminação
 - A escuridão da luz só cobria um quadrado em volta do personagem (~10 tiles para cada lado); além dele as áreas exploradas ficavam mais claras, criando um corte reto por volta dos 12 tiles. Agora a tela inteira recebe a escuridão da borda e a névoa das áreas exploradas é compensada para manter o mesmo brilho.
 
@@ -47,3 +54,4 @@ Registro do que foi implementado em cada etapa, da mais recente para a mais anti
 
 ## Próximos passos sugeridos
 - Usar as portas simples (`door_single_*`) — hoje todas as portas têm 2 tiles.
+- Zumbis perseguirem o personagem quando o veem, e dano/vida.

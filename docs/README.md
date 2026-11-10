@@ -1,13 +1,13 @@
 # Hospital Game — documentação
 
-Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a partir de uma **seed**, uma dungeon de hospital com salas, corredores e portas. O personagem nasce no canto superior esquerdo, anda tile a tile, pode correr gastando estamina, abre e fecha portas e só enxerga o que está perto dele (névoa de guerra).
+Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a partir de uma **seed**, uma dungeon de hospital com salas, corredores e portas. O personagem nasce no canto superior esquerdo, anda tile a tile, pode correr gastando estamina, abre e fecha portas e só enxerga o que está perto dele (névoa de guerra). Cada sala tem de 3 a 5 zumbis enterrados que saem do chão quando o personagem os vê e ficam vagando pela sala.
 
 ## Índice
 
 | Documento | Conteúdo |
 |---|---|
 | [arquitetura.md](arquitetura.md) | Módulos, loop do jogo e ordem de desenho |
-| [sistemas.md](sistemas.md) | Geração da dungeon, portas, movimento, estamina, visão, câmera/zoom, renderização do mapa e efeitos visuais |
+| [sistemas.md](sistemas.md) | Geração da dungeon, portas, zumbis, movimento, estamina, visão, câmera/zoom, renderização do mapa e efeitos visuais |
 | [assets.md](assets.md) | Sprite sheet do personagem, tileset do hospital e como os recortes funcionam |
 | [configuracao.md](configuracao.md) | Todas as constantes de `settings.py` |
 | [testes.md](testes.md) | Como rodar os testes e o que cada um cobre |
@@ -48,13 +48,15 @@ settings.py          todas as constantes ajustáveis
 dungeon.py           geração procedural (BSP) a partir da seed; spawn
 doors.py             posicionamento das portas e abrir/fechar
 player.py            movimento em grid, corrida, estamina, animação
+zombies.py           zumbis: spawn por sala, surgir do chão, vagar, colisão
 fov.py               campo de visão (linha de visão) e memória do explorado
 lighting.py          névoa com bordas suaves e luz em volta do personagem
-sprites.py           recorte do sprite sheet do personagem
+sprites.py           recorte do sprite sheet do personagem e do zumbi
 tileset.py           recorte do tileset do hospital e desenho do mapa
 tools/export_frames.py   exporta os recortes em PNG para conferência
 tests/               testes unitários (unittest)
 assets/personagem/   sprite sheet do personagem
 assets/background/   tileset do hospital (pisos, paredes, portas)
+assets/monster/      sprite sheet do zumbi
 docs/                esta documentação
 ```

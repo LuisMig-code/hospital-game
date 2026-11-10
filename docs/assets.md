@@ -63,3 +63,23 @@ As duas pastas estão no `.gitignore`, porque o jogo faz os recortes sozinho ao 
 
 - **Novo sprite sheet com o mesmo layout**: troque `CHARACTER_SHEET` em `settings.py`. Se a ordem das linhas mudar, ajuste `ROW_NAMES` em `sprites.py`.
 - **Novo tileset**: se o número de peças por linha mudar, ajuste `PIECE_ROWS` em `tileset.py`. O teste `test_finds_all_pieces_in_order` avisa se a detecção não bater.
+
+## Zumbi — `assets/monster/zombie_spritesheet_32x32.png`
+
+- 256×192 px, grade uniforme de **8×6 quadros de 32×32**, fundo **magenta opaco** (255, 0, 255).
+
+| Linha | Animação | Quadros |
+|---|---|---|
+| 1 | `idle` (de frente) | 2 |
+| 2 | `walk_right` | 4 |
+| 3 | `walk_left` | 4 |
+| 4 | `walk_up` (de costas) | 4 |
+| 5 | `walk_down` (cabeça baixa, queixo aparecendo sob o cabelo) | 4 |
+| 6 | `emerge` — sai do chão: buraco, mãos, cabeça, corpo, em pé | 8 |
+
+**Como o recorte funciona** (`sprites.load_zombie_animations`):
+1. Fundo magenta vira transparente. Os pixels de transição na borda do desenho (roxos: vermelho e azul parecidos e bem acima do verde) também: os claros viram transparentes e os escuros viram contorno quase preto. O sangue (vermelho, pouco azul) não é afetado.
+2. Cada quadro é recortado da grade (`ZOMBIE_ROWS` diz quantos quadros cada linha tem; as colunas vazias são ignoradas).
+3. Escala 2× por vizinho mais próximo (`ZOMBIE_SIZE = 64`).
+
+`tools/export_frames.py` também salva os quadros do zumbi em `assets/monster/frames/` (ignorada no git) com um `preview.png` ampliado sobre fundo escuro.

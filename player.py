@@ -44,7 +44,7 @@ class Player:
         self.frame = 0
 
     # ------------------------------------------------------------------ input
-    def _try_start_step(self, keys, dungeon):
+    def _try_start_step(self, keys, dungeon, blocked=frozenset()):
         """Se uma direção está pressionada, vira para ela e, se o tile vizinho
         é chão, começa a andar até ele."""
         d = _read_direction(keys)
@@ -53,7 +53,7 @@ class Player:
         self.facing = d
         dx, dy = DIRS[d]
         nxt = (self.tile[0] + dx, self.tile[1] + dy)
-        if dungeon.is_walkable(*nxt):
+        if dungeon.is_walkable(*nxt) and nxt not in blocked:
             self.target = nxt
 
     def _wants_run(self, keys):
@@ -63,12 +63,13 @@ class Player:
         return shift and not self.exhausted and self.stamina > 0
 
     # ----------------------------------------------------------------- update
-    def update(self, dt, keys, dungeon):
+    def update(self, dt, keys, dungeon, blocked=frozenset()):
+        """blocked: tiles ocupados por outros (zumbis) — não dá para entrar."""
         budget = dt
         self.moving = False
 
         if self.target is None:
-            self._try_start_step(keys, dungeon)
+            self._try_start_step(keys, dungeon, blocked)
 
         # Consome o tempo do frame andando; ao chegar num tile, encaixa
         # exatamente nele e (se a tecla continua pressionada) segue para o próximo.
@@ -84,7 +85,7 @@ class Player:
             if t * speed >= dist - 1e-6:
                 self.x, self.y = tx, ty
                 self.tile, self.target = self.target, None
-                self._try_start_step(keys, dungeon)
+                self._try_start_step(keys, dungeon, blocked)
             else:
                 step = speed * t
                 self.x += step * (1 if tx > self.x else -1 if tx < self.x else 0)

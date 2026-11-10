@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "assets"
 CHARACTER_SHEET = ASSETS / "personagem" / "Chibi Character Animation Sprite Sheet.png"
 TILESET = ASSETS / "background" / "hospital-tiles.png"
+ZOMBIE_SHEET = ASSETS / "monster" / "zombie_spritesheet_32x32.png"
 
 # Tela / grid
 TILE = 32
@@ -59,3 +60,12 @@ STAMINA_DRAIN = 25              # gasto por segundo correndo (100 -> 0 em 4 s)
 STAMINA_REGEN_IDLE = 10         # recuperação por segundo parado
 STAMINA_REGEN_WALK = 5          # recuperação por segundo andando normal
 STAMINA_RECOVER_TO_RUN = 20     # ao zerar, fica "cansado" até recuperar isso
+
+# Zumbis
+ZOMBIE_SIZE = 64                # quadro de 32 px escalado 2x (pixel art nítida; ~ altura do personagem)
+ZOMBIES_PER_ROOM = (3, 5)       # mínimo e máximo de zumbis por sala
+ZOMBIE_SPEED = 45               # pixels por segundo (bem mais lento que o jogador)
+ZOMBIE_IDLE_TIME = (1.0, 4.0)   # segundos parado entre caminhadas
+ZOMBIE_WANDER_STEPS = (1, 4)    # tiles andados em cada caminhada
+ZOMBIE_ANIM_FPS = 6             # animação parado/andando
+ZOMBIE_EMERGE_FPS = 8           # animação saindo do chão (8 quadros = 1 s)

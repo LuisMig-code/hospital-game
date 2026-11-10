@@ -18,7 +18,8 @@ from dungeon import FLOOR, generate
 from fov import Vision
 from lighting import FogLayer, Light
 from player import Player
-from sprites import load_animations
+from sprites import load_animations, load_zombie_animations
+from zombies import Horde
 from doors import try_toggle
 from tileset import Tileset, bake_wall_shadows, door_rect, draw_door, init_doors, render_map
 
@@ -57,6 +58,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("consolas", 18)
         self.anims = load_animations()
+        self.zombie_anims = load_zombie_animations()
         r = S.VISION_RADIUS
         self.light = Light(round(math.sqrt(r * r + r) * S.TILE))   # mesmo raio de fov.in_radius
         try:
@@ -75,6 +77,8 @@ class Game:
         self.map_surf = build_map_surface(self.dungeon, self.tiles)
         self.grid_surf = build_grid_surface(self.dungeon)
         self.player = Player(self.anims, self.dungeon.spawn)
+        # Zumbis enterrados nas salas (longe do spawn); saem do chão quando vistos
+        self.horde = Horde(self.dungeon, avoid=[self.dungeon.spawn])
         self.seed_label = str(seed)
         # Névoa: começa toda preta; tiles descobertos viram "escurecidos"
         self.vision = Vision(self.dungeon, S.VISION_RADIUS)
@@ -128,7 +132,7 @@ class Game:
         view.blit(self.map_surf, (-cam[0], -cam[1]))
         if self.show_grid:
             view.blit(self.grid_surf, (-cam[0], -cam[1]))
-        self.player.draw(view, cam)          # sombra + sprite
+        self.draw_actors(view, cam)          # personagem e zumbis, com sombra
         self.draw_door_overlap(view, cam)
         if self.show_fog:
             center = (round(self.player.x - cam[0]), round(self.player.y - cam[1]))
@@ -142,6 +146,18 @@ class Game:
             pygame.transform.scale(view, size, self.screen)
         else:                 # afastar: suavizado para não serrilhar
             pygame.transform.smoothscale(view, size, self.screen)
+
+    def draw_actors(self, view, cam):
+        """Personagem e zumbis ordenados pela altura dos pés: quem está mais
+        embaixo na tela é desenhado por último (fica na frente). Com a névoa
+        ligada, só aparecem os zumbis que o personagem está vendo."""
+        actors = [(self.player.feet()[1], lambda: self.player.draw(view, cam))]
+        for z in self.horde.active():
+            if self.show_fog and z.pixel_tile() not in self.vision.visible:
+                continue
+            actors.append((z.feet_y(), lambda z=z: z.draw(view, cam, self.zombie_anims)))
+        for _, draw in sorted(actors, key=lambda a: a[0]):
+            draw()
 
     def draw_door_overlap(self, view, cam):
         """Profundidade: portas da parede de cima ocupam 2 tiles de altura, e
@@ -230,7 +246,9 @@ class Game:
                     elif e.key in (pygame.K_MINUS, pygame.K_KP_MINUS) or e.unicode == "-":
                         self.change_zoom(-1)
 
-            self.player.update(dt, pygame.key.get_pressed(), self.dungeon)
+            self.horde.update(dt, self.player, self.vision.visible)
+            self.player.update(dt, pygame.key.get_pressed(), self.dungeon,
+                               blocked=self.horde.blocked_tiles())
             self.light.update(dt)
             self.update_vision()
 
