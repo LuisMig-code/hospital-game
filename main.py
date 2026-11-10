@@ -18,8 +18,8 @@ from dungeon import FLOOR, generate
 from fov import Vision
 from lighting import FogLayer, Light
 from player import Player
-from combat import apply_attack, texts_for
-from sprites import load_animations, load_attack_animations, load_zombie_animations
+from combat import FloatingText, apply_attack, texts_for
+from sprites import load_animations, load_attack_animations, load_damage_animations, load_zombie_animations
 from zombies import Horde
 from doors import try_toggle
 from tileset import Tileset, bake_wall_shadows, door_rect, draw_door, init_doors, render_map
@@ -61,8 +61,11 @@ class Game:
         self.anims = load_animations()
         # ataque: mesma altura do personagem parado (o desenho do sheet é menor)
         self.anims.update(load_attack_animations(target_height=self.anims["idle"][0].get_height()))
+        self.anims.update(load_damage_animations(target_height=self.anims["idle"][0].get_height()))
         self.zombie_anims = load_zombie_animations()
         self.small_font = pygame.font.SysFont("consolas", 15)
+        self.big_font = pygame.font.SysFont("consolas", 72, bold=True)
+        self._vignette = None
         self.dmg_font = pygame.font.SysFont("consolas", 15, bold=True)
         self._dmg_cache = {}
         r = S.VISION_RADIUS
@@ -87,7 +90,10 @@ class Game:
         # Zumbis enterrados nas salas (longe do spawn); saem do chão quando vistos
         self.horde = Horde(self.dungeon, avoid=[self.dungeon.spawn])
         self.texts = []                    # números de dano flutuando
+        self.seed = seed
         self.seed_label = str(seed)
+        self.hit_flash = 0.0               # vermelho nas bordas ao levar golpe
+        self.dead_time = 0.0               # segundos desde o game over
         # Névoa: começa toda preta; tiles descobertos viram "escurecidos"
         self.vision = Vision(self.dungeon, S.VISION_RADIUS)
         self.fog = FogLayer(self.dungeon.width, self.dungeon.height)
@@ -96,18 +102,22 @@ class Game:
 
     def action(self):
         """Espaço: se há porta à frente (ou o personagem está numa), abre/fecha;
-        senão, ataca na direção em que ele está virado."""
+        senão, ataca na direção em que ele está virado. Levando dano: nada."""
+        if self.player.hurt or self.player.dead:
+            return
         if self.toggle_door() is None:
             self.player.request_attack()
 
     def toggle_door(self):
         """Espaço: abre/fecha a porta à frente do personagem."""
-        result, door = try_toggle(self.dungeon, self.player)
+        result, door = try_toggle(self.dungeon, self.player, self.horde.blocked_tiles())
         if result in ("abriu", "fechou"):
             draw_door(self.map_surf, door, self.tiles)
             self.update_vision(force=True)   # a porta muda o que dá para ver
         elif result == "bloqueada":
             self.show_message("Saia da porta para fechá-la")
+        elif result == "zumbi":
+            self.show_message("Tem um zumbi na porta!")
         return result
 
     def update_vision(self, force=False):
@@ -235,13 +245,25 @@ class Game:
 
         # Painel semitransparente atrás do HUD
         text_w = self.font.size(hud)[0]
-        panel = pygame.Rect(4, 4, text_w + 14, 78 if showing_msg else 54)
+        panel = pygame.Rect(4, 4, text_w + 14, 100 if showing_msg else 76)
         self.hud_panel(panel)
 
         self._text(hud, (10, 8))
 
-        # Barra de estamina
+        # Barra de vida
         x, y, w, h = 10, 34, 200, 14
+        ratio = p.hp / S.PLAYER_HP
+        pygame.draw.rect(self.screen, (30, 30, 30), (x, y, w, h), border_radius=4)
+        if ratio > 0:
+            pygame.draw.rect(self.screen, (200, 40, 45), (x, y, max(4, round(w * ratio)), h), border_radius=4)
+        for i in range(1, S.PLAYER_HP // S.ZOMBIE_DAMAGE):   # marcas: cada golpe de zumbi
+            mx = x + round(w * i * S.ZOMBIE_DAMAGE / S.PLAYER_HP)
+            pygame.draw.line(self.screen, (20, 20, 20), (mx, y + 2), (mx, y + h - 3))
+        pygame.draw.rect(self.screen, (230, 230, 230), (x, y, w, h), 1, border_radius=4)
+        self._text(f"Vida: {p.hp}/{S.PLAYER_HP}", (x + w + 10, y - 2))
+
+        # Barra de estamina
+        x, y, w, h = 10, 56, 200, 14
         ratio = p.stamina / S.STAMINA_MAX
         color = (220, 60, 50) if ratio < 0.25 else (240, 200, 40)
         pygame.draw.rect(self.screen, (30, 30, 30), (x, y, w, h), border_radius=4)
@@ -253,7 +275,7 @@ class Game:
 
         # Mensagem temporária (ex.: porta bloqueada)
         if showing_msg:
-            self._text(self.message, (10, 56), (255, 200, 120))
+            self._text(self.message, (10, 78), (255, 200, 120))
 
         self.draw_controls()
 
@@ -281,16 +303,70 @@ class Game:
             self._panel_size = rect.size
         self.screen.blit(self._panel, rect.topleft)
 
+    def vignette(self):
+        """Moldura vermelha que some para o centro (criada uma vez)."""
+        if self._vignette is None:
+            small = pygame.Surface((64, 36), pygame.SRCALPHA)
+            for y in range(36):
+                for x in range(64):
+                    d = min(x, 63 - x, (y * 64 / 36), (35 - y) * 64 / 36) / 32   # 0 na borda, 1 no meio
+                    a = round(200 * max(0.0, 1 - d / 0.45) ** 2)
+                    small.set_at((x, y), (200, 0, 0, a))
+            self._vignette = pygame.transform.smoothscale(small, (S.SCREEN_W, S.SCREEN_H))
+        return self._vignette
+
+    def draw_hit_flash(self):
+        if self.hit_flash > 0:
+            v = self.vignette()
+            v.set_alpha(round(255 * self.hit_flash / S.HIT_SCREEN_FLASH))
+            self.screen.blit(v, (0, 0))
+
+    def draw_game_over(self):
+        """Vida zerada: escurece a tela aos poucos e mostra GAME OVER."""
+        if not self.player.dead:
+            return
+        k = min(1.0, self.dead_time / 1.0)
+        shade = pygame.Surface((S.SCREEN_W, S.SCREEN_H), pygame.SRCALPHA)
+        shade.fill((25, 0, 0, round(190 * k)))
+        self.screen.blit(shade, (0, 0))
+        if self.dead_time < 0.4:
+            return
+        a = round(255 * min(1.0, (self.dead_time - 0.4) / 0.6))
+        center = (S.SCREEN_W // 2, round(S.SCREEN_H * 0.27))   # acima do personagem caído
+        for img, dy in ((self.big_font.render("GAME OVER", True, (220, 40, 40)), -10),
+                        (self.font.render("Recomeçando a dungeon...", True, (230, 230, 230)), 50)):
+            img.set_alpha(a)
+            self.screen.blit(img, img.get_rect(center=(center[0], center[1] + dy)))
+
     def show_message(self, text, seconds=1.5):
         self.message = text
         self.message_until = pygame.time.get_ticks() + int(seconds * 1000)
 
+    def zombie_hits(self, attackers):
+        """Golpes dos zumbis neste quadro: o primeiro que conta tira vida e
+        empurra o personagem (os outros caem na invulnerabilidade)."""
+        p = self.player
+        for z in attackers:
+            if p.take_hit(S.ZOMBIE_DAMAGE, z.tile, self.dungeon, self.horde.blocked_tiles()):
+                self.hit_flash = S.HIT_SCREEN_FLASH
+                fx, fy = p.feet()
+                self.texts.append(FloatingText(p.x, fy - S.PLAYER_SPRITE_HEIGHT, f"-{S.ZOMBIE_DAMAGE}",
+                                               (255, 60, 60)))
+
     def step(self, dt, keys):
         """Um quadro da lógica do jogo (sem desenhar)."""
-        self.horde.update(dt, self.player, self.vision.visible)
+        self.zombie_hits(self.horde.update(dt, self.player, self.vision.visible))
+        self.hit_flash = max(0.0, self.hit_flash - dt)
+        if self.player.dead:               # game over: recomeça a mesma dungeon
+            self.dead_time += dt
+            if self.dead_time >= S.GAME_OVER_TIME:
+                self.new_level(self.seed)
+                return
         impact = self.player.update(dt, keys, self.dungeon, blocked=self.horde.blocked_tiles())
         if impact is not None:   # quadro do golpe: dano em área nos zumbis
-            hits = apply_attack(self.horde, impact, self.player.tile, self.vision.visible)
+            p = self.player
+            hits = apply_attack(self.horde, impact, p.tile, self.vision.visible,
+                                dungeon=self.dungeon, player_occ={p.tile, p.target} - {None})
             self.texts.extend(texts_for(hits))
         for t in self.texts:
             t.update(dt)
@@ -319,7 +395,9 @@ class Game:
 
             self.step(dt, pygame.key.get_pressed())
             self.draw_world()
+            self.draw_hit_flash()
             self.draw_hud()
+            self.draw_game_over()
             pygame.display.flip()
 
 

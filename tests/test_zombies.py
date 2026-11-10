@@ -1,5 +1,6 @@
 """Testes dos zumbis: spawn, surgimento, vagar e colisão."""
 import os
+import random
 import sys
 import unittest
 from pathlib import Path
@@ -13,7 +14,9 @@ import settings as S  # noqa: E402
 from dungeon import generate  # noqa: E402
 from player import Player  # noqa: E402
 from sprites import ZOMBIE_ROWS, is_magenta, load_zombie_animations  # noqa: E402
-from zombies import EMERGING, IDLE, UNDERGROUND, WALK, Horde, in_room, spawn_zombies  # noqa: E402
+from dungeon import Room  # noqa: E402
+from zombies import (CHASE, DYING, EMERGING, IDLE, UNDERGROUND, WALK, Horde, Zombie,  # noqa: E402
+                     chebyshev, in_room, spawn_zombies)
 
 DT = 1 / 60
 ANIMS = {n: [pygame.Surface((10, 10))] * 8
@@ -58,11 +61,7 @@ class BehaviourTests(unittest.TestCase):
         room = max(self.d.rooms, key=lambda r: r.w * r.h)
         self.room = room
         self.zs = [z for z in self.horde.zombies if z.room is room]
-        taken = {z.tile for z in self.horde.zombies}
-        free = next((x, y) for y in range(room.y, room.y + room.h)
-                    for x in range(room.x, room.x + room.w)
-                    if self.d.is_walkable(x, y) and (x, y) not in taken)
-        self.player = Player(ANIMS, free)
+        self.player = Player(ANIMS, (-50, -50))     # longe: os zumbis só vagam
         self.room_tiles = {(x, y) for y in range(room.y, room.y + room.h)
                            for x in range(room.x, room.x + room.w)}
 
@@ -168,10 +167,162 @@ class BehaviourTests(unittest.TestCase):
         self.horde.update(DT, self.player, {z.tile})
         self.assertEqual(z.state, UNDERGROUND)
 
+    def test_chase_and_attack_in_real_dungeon(self):
+        """Personagem parado na sala: os zumbis perto vão até ele e batem,
+        sem nunca entrar no tile dele nem um no outro."""
+        taken = {z.tile for z in self.horde.zombies}
+        zx, zy = self.zs[0].tile
+        near = next(t for t in self.room_tiles
+                    if chebyshev(t, (zx, zy)) == 2 and self.d.is_walkable(*t) and t not in taken)
+        self.player = Player(ANIMS, near)                  # a 2 tiles de um zumbi
+        hits = 0
+        for _ in range(round(15 / DT)):
+            hits += len(self.horde.update(DT, self.player, self.room_tiles))
+            occ = set()
+            for z in self.horde.active():
+                if z.target:
+                    (x, y), (tx, ty) = z.tile, z.target
+                    self.assertLessEqual(chebyshev(z.tile, z.target), 1)
+                    self.assertTrue(self.d.is_walkable(tx, ty))
+                    if tx != x and ty != y:
+                        self.assertTrue(self.d.is_walkable(tx, y) and self.d.is_walkable(x, ty))
+                for t in z.occupied():
+                    self.assertNotIn(t, occ, "dois zumbis no mesmo tile")
+                    self.assertNotEqual(t, self.player.tile, "zumbi no tile do personagem")
+                    occ.add(t)
+        self.assertGreater(hits, 0)
+        self.assertTrue(any(z.state == CHASE for z in self.zs))
+
 
 class OpenRoomDungeon:
     def is_walkable(self, tx, ty):
         return True
+
+
+class MapDungeon:
+    """Mapa pequeno a partir de strings: '.' chão, '#' parede, 'D' porta
+    aberta, 'd' porta fechada. `rooms`: retângulos (x, y, w, h) das salas."""
+    def __init__(self, rows, rooms):
+        self.rows = rows
+        self.rooms = [Room(*r) for r in rooms]
+        self.door_at = {(x, y): True for y, r in enumerate(rows) for x, c in enumerate(r) if c in "Dd"}
+
+    def is_walkable(self, tx, ty):
+        return (0 <= ty < len(self.rows) and 0 <= tx < len(self.rows[0])
+                and self.rows[ty][tx] in ".D")
+
+
+def open_room(w):
+    return MapDungeon(["#" * (w + 2)] + ["#" + "." * w + "#"] * 3 + ["#" * (w + 2)], [(1, 1, w, 3)])
+
+
+TWO_ROOMS = ["###########",
+             "#....#....#",
+             "#....D....#",
+             "#....#....#",
+             "###########"]
+ROOMS = [(1, 1, 4, 3), (6, 1, 4, 3)]
+
+
+class ChaseTests(unittest.TestCase):
+    """Perseguição e golpe dos zumbis (personagem parado num tile)."""
+
+    def setUp(self):
+        self.rng = random.Random(1)
+
+    def zombie(self, d, tile):
+        z = Zombie(tile, next(r for r in d.rooms if in_room(r, tile)))
+        z.state = IDLE
+        return z
+
+    def simulate(self, z, d, player_tile, seconds):
+        """Roda o zumbi; devolve os instantes dos golpes. Confere cada passo."""
+        hits, t = [], 0.0
+        for _ in range(round(seconds / DT)):
+            t += DT
+            if z.update(DT, d, {player_tile}, self.rng, player_tile):
+                hits.append(t)
+            if z.target:
+                self.assertTrue(d.is_walkable(*z.target))
+                self.assertNotEqual(z.target, player_tile)
+                (x, y), (tx, ty) = z.tile, z.target
+                self.assertLessEqual(chebyshev(z.tile, z.target), 1)
+                if tx != x and ty != y:                                   # sem cortar quina
+                    self.assertTrue(d.is_walkable(tx, y) and d.is_walkable(x, ty))
+        return hits
+
+    def test_starts_chasing_within_radius_only(self):
+        d = open_room(10)
+        z = self.zombie(d, (1, 2))
+        z.update(DT, d, {(5, 2)}, self.rng, (5, 2))                     # a 4 tiles
+        self.assertNotEqual(z.state, CHASE)
+        z = self.zombie(d, (1, 2))
+        z.update(DT, d, {(4, 2)}, self.rng, (4, 2))                     # a 3 tiles
+        self.assertEqual(z.state, CHASE)
+
+    def test_reaches_and_hits_with_windup_and_cooldown(self):
+        d = open_room(10)
+        z = self.zombie(d, (2, 2))
+        hits = self.simulate(z, d, (5, 2), 5.0)
+        self.assertEqual(z.tile, (4, 2))                                 # colado nele
+        self.assertGreaterEqual(len(hits), 3)
+        arrive = 2 * S.TILE / S.ZOMBIE_CHASE_SPEED
+        self.assertGreaterEqual(hits[0], arrive + S.ZOMBIE_ATTACK_WINDUP - DT)
+        for a, b in zip(hits, hits[1:]):
+            self.assertAlmostEqual(b - a, S.ZOMBIE_ATTACK_COOLDOWN + S.ZOMBIE_ATTACK_WINDUP, delta=3 * DT)
+
+    def test_follows_through_open_door_not_closed(self):
+        d = MapDungeon(TWO_ROOMS, ROOMS)
+        z = self.zombie(d, (4, 2))
+        self.assertTrue(self.simulate(z, d, (7, 2), 3.0))
+        self.assertEqual(z.tile, (6, 2))                                 # passou pela porta (5,2)
+        d = MapDungeon([r.replace("D", "d") for r in TWO_ROOMS], ROOMS)
+        z = self.zombie(d, (4, 2))
+        self.assertEqual(self.simulate(z, d, (7, 2), 3.0), [])
+        self.assertLessEqual(z.tile[0], 4)                               # porta fechada segura
+
+    def test_stops_when_player_is_far_and_wanders_where_it_is(self):
+        d = MapDungeon(TWO_ROOMS, ROOMS)
+        z = self.zombie(d, (4, 2))
+        self.simulate(z, d, (7, 2), 3.0)                                 # foi para a outra sala
+        self.assertEqual(z.state, CHASE)
+        self.simulate(z, d, (60, 60), 0.5)                               # longe: volta a vagar
+        self.assertIn(z.state, (IDLE, WALK))
+        self.assertIs(z.room, d.rooms[1])
+        for _ in range(round(5 / DT)):
+            z.update(DT, d, set(), self.rng, (60, 60))
+            self.assertTrue(in_room(d.rooms[1], z.tile))
+
+    def test_goes_around_wall(self):
+        d = MapDungeon(["#######",
+                        "#.....#",
+                        "#.###.#",
+                        "#.....#",
+                        "#######"], [(1, 1, 5, 3)])
+        z = self.zombie(d, (3, 1))
+        self.assertTrue(self.simulate(z, d, (3, 3), 6.0))                # parede no meio
+        self.assertEqual(z.tile[1], 3)
+
+    def test_does_not_hit_across_corner(self):
+        d = MapDungeon(["#####",
+                        "#.#.#",
+                        "##..#",
+                        "#####"], [(1, 1, 3, 2)])
+        z = self.zombie(d, (1, 1))                                       # (1,1)->(2,2): quina de parede
+        self.assertEqual(self.simulate(z, d, (2, 2), 2.0), [])
+
+    def test_dead_player_buried_or_dying_zombie_do_not_chase(self):
+        d = open_room(6)
+        z = self.zombie(d, (1, 2))
+        z.update(DT, d, {(3, 2)}, self.rng, None)                        # personagem morto
+        self.assertNotEqual(z.state, CHASE)
+        z = Zombie((1, 2), d.rooms[0])                                   # enterrado
+        self.assertFalse(z.update(DT, d, {(2, 2)}, self.rng, (2, 2)))
+        self.assertEqual(z.state, UNDERGROUND)
+        z = self.zombie(d, (1, 2))
+        z.hit(S.ZOMBIE_HP)                                               # morrendo
+        self.assertEqual(z.state, DYING)
+        self.assertFalse(z.update(DT, d, {(2, 2)}, self.rng, (2, 2)))
 
 
 def load_frames(name):

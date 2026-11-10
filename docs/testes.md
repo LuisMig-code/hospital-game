@@ -35,6 +35,8 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Ataque: o golpe acerta **uma vez**, no quadro 5, no tile à frente; durante o ataque não anda nem vira; pedido no meio de um passo começa ao chegar no tile; pedidos durante o ataque não empilham.
 
 - Parado: continua virado para a direção em que andava (`idle_<direção>`; de frente, `idle`).
+- Golpe de zumbi (`take_hit`): tira 2; empurra 1 tile para o lado oposto (reto e diagonal) e termina no centro do tile; parede atrás ou zumbi atrás → sem empurrão e dano curto; diagonal bloqueada desliza pelo eixo livre; no meio de um passo parte do tile desenhado; cancela o ataque e trava os controles durante o dano; invulnerável durante o dano e por 1 s depois; vida 0 → morto, caído no quadro 4, sem controle.
+- Sprite de dano: 6 quadros com empurrão e 4 sem, nas 4 direções, de pé na altura do personagem.
 
 ### `tests/test_combat.py`
 - Área do golpe nas 4 direções: impacto 11, 7 tiles com 6 (os 8 vizinhos do impacto menos o personagem), 11 com 4 (o anel de 16 sem a fileira a 3 tiles à frente), nada além de 2 tiles à frente.
@@ -42,10 +44,12 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Não levam dano: enterrado, fora da visão, morrendo.
 - Morrendo: para de bloquear, afunda (quadros de 7 a 0), sai da horda e conta como abatido.
 - Piscar e barra de vida ligam no golpe e somem depois; números de dano sobem e somem.
+- Zumbi lançado: quem sobrevive voa 1 tile para longe do personagem (reto e diagonal), termina no centro do tile no tempo certo; quem morre não é lançado; parede ou zumbi atrás seguram; no meio de um passo parte do tile desenhado; morrendo durante o voo, para ali.
 - Sprite de ataque: 9 quadros por direção, altura igual à do `idle`, `attack_left` é o espelho de `attack_right`, sem contorno magenta.
 
 ### `tests/test_controls.py`
-- Espaço olhando para uma porta: abre/fecha e não ataca; sem porta por perto: ataca; dentro de uma porta aberta: não fecha nem ataca.
+- Espaço olhando para uma porta: abre/fecha e não ataca; sem porta por perto: ataca; dentro de uma porta aberta: não fecha nem ataca; com zumbi na porta: não fecha.
+- Game over: golpe de zumbi tira vida e acende a moldura vermelha; vida 0 → depois de `GAME_OVER_TIME` recomeça a mesma seed com vida cheia no spawn.
 
 ### `tests/test_fov.py`
 - A origem é sempre visível; nada fora do raio é visível.
@@ -66,10 +70,11 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 ### `tests/test_zombies.py`
 - Em 60 seeds: cada sala com espaço tem de 3 a 5 zumbis, em tiles distintos de chão dentro da sala, todos enterrados e a mais de 2 tiles do spawn; a mesma seed gera os mesmos zumbis.
 - Ficam enterrados enquanto não são vistos; ao entrar na visão, saem do chão e depois começam a andar; zumbis de outras salas continuam enterrados.
-- Simulando 60 s: nunca saem da sala, dois zumbis nunca ocupam o mesmo tile, nenhum entra no tile do personagem, e se movem (mais da metade sai do tile inicial).
+- Simulando 60 s com o personagem longe: nunca saem da sala, dois zumbis nunca ocupam o mesmo tile, nenhum entra no tile do personagem, e se movem (mais da metade sai do tile inicial).
 - Também andam na diagonal, sempre para um tile vizinho, sem cortar quina, com sprite horizontal e a mesma velocidade em px/s.
 - Sem pausa entre caminhadas: andam mais de 90% do tempo; parada mais longa só quando cercados (≤ 0,3 s).
 - Zumbi enterrado não bloqueia o personagem; fora do chão, bloqueia. Não acorda com o personagem em cima.
+- Perseguição: começa a 3 tiles e não a 4; chega colado e bate com preparo e intervalo certos; passa por porta aberta mas não por fechada; contorna parede; não bate através de quina; longe do personagem volta a vagar na sala em que está; personagem morto, zumbi enterrado ou morrendo não perseguem. Numa dungeon real, com o personagem parado perto: batem nele sem ninguém entrar no tile dele ou de outro zumbi.
 - Sprite: quantidade de quadros por animação, tamanho 64×64, nenhum pixel magenta/roxo sobrando.
 
 ### `tests/test_zoom.py`

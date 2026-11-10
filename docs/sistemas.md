@@ -130,19 +130,28 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 | `underground` | Enterrado e invisível, esperando ser visto. | não |
 | `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (8 quadros, 1 s). | sim |
 | `idle` | Pausa entre caminhadas (`ZOMBIE_IDLE_TIME`, hoje **0**: emenda direto na próxima caminhada). Cercado, sem direção livre, espera 0,1–0,3 s e tenta de novo. | sim |
+| `chase` | Personagem a até **3 tiles** (Chebyshev, `ZOMBIE_CHASE_RADIUS`): vai atrás dele a 70 px/s (`ZOMBIE_CHASE_SPEED`) e, colado nele, ataca (veja "Vida do personagem"). | sim |
 | `walk` | Sorteia uma das **8 direções** livres (retas ou diagonais) e anda 1–4 tiles nela (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`) — na diagonal, mesma velocidade em px/s. Depois volta a `idle`. | sim |
 | `dying` | Vida chegou a 0: toca a animação de surgir **ao contrário** (afunda de volta no chão, `ZOMBIE_DEATH_FPS`). Não leva mais dano. | não |
 | `dead` | Terminou de afundar: sai do jogo e conta em "Abatidos". | — |
 
-- O zumbi só anda para tiles **dentro da própria sala**, que sejam chão e estejam livres (sem o personagem nem outro zumbi — vale o tile atual e o de destino). Se não houver direção livre, espera um pouco e tenta de novo.
+- Vagando, o zumbi só anda para tiles **dentro da própria sala**, que sejam chão e estejam livres (sem o personagem nem outro zumbi — vale o tile atual e o de destino). Se não houver direção livre, espera um pouco e tenta de novo.
 - Na diagonal, como o personagem, **não corta quina**: os dois tiles retos atravessados também têm que ser chão da sala. Usa o sprite horizontal (`walk_left`/`walk_right`).
 - O personagem não entra em tile de zumbi fora do chão (`Player.update(..., blocked=...)`); zumbi enterrado não bloqueia.
-- Têm **10 de vida** (`ZOMBIE_HP`) e levam dano do personagem (veja "Combate"). Ainda não atacam nem perseguem: só vagam.
+- Têm **10 de vida** (`ZOMBIE_HP`) e levam dano do personagem (veja "Combate").
+
+### Perseguição
+- Vale para zumbis fora do chão e vivos (`idle`/`walk`/`chase`); o personagem morto não é perseguido. A troca entre vagar e perseguir só acontece com o zumbi parado no centro de um tile (nunca no meio de um passo).
+- A cada tile, `chase_step` faz uma **busca em largura** curta (8 direções, sem cortar quina, sem paredes, portas fechadas, outros zumbis nem o personagem; até 9 tiles do personagem) e dá o primeiro passo do caminho mais curto até um tile **colado** nele. Sem caminho, espera virado para ele.
+- Perseguindo pode **sair da sala** por portas abertas e corredores; porta fechada segura o zumbi.
+- Com o personagem a mais de 3 tiles, volta a vagar **onde está**: na sala em que estiver (passa a ser a sala dele) ou, num corredor, pelo corredor (qualquer chão menos as portas) até entrar numa sala.
+- O Espaço não fecha uma porta com zumbi dentro ("Tem um zumbi na porta!").
 
 ### Desenho
 - Sprite 32×32 escalada 2× (64 px, `ZOMBIE_SIZE`) por vizinho mais próximo: pixel art nítida, mais ou menos da altura do personagem.
 - Mesma sombra elíptica do personagem (menos durante o buraco no chão, nos primeiros quadros do surgimento).
 - Ordenados por profundidade junto com o personagem; com a névoa ligada, só aparecem quando o tile em que estão desenhados está visível.
+- Golpe: o sheet do zumbi não tem animação de ataque, então ele **recua um pouco** enquanto prepara e **avança** `ZOMBIE_LUNGE` px na direção do personagem ao bater.
 - Ao levar dano: **piscam** claro/avermelhado (`HIT_FLASH_TIME`) e mostram uma **barra de vida** acima da cabeça por `HP_BAR_TIME` s (verde → laranja → vermelho).
 
 ## Combate (`combat.py`, `player.py`)
@@ -166,7 +175,30 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 - 6 + 4 também mata; quem leva só 6 fica com 4 de vida.
 - Só leva dano o zumbi **vivo e fora do chão** que está num tile **visível** pelo personagem (parede bloqueia o golpe, igual à visão). Vale o tile em que o zumbi está desenhado (no meio de um passo, o mais próximo).
 
+### Zumbi lançado pelo golpe
+- Zumbi que **sobrevive** ao golpe (parado, andando ou perseguindo) é **lançado 1 tile para o lado oposto ao personagem** (`Zombie.knock_back`, chamado por `apply_attack`), em 8 direções: zumbi na diagonal do personagem voa na diagonal. O voo dura `ZOMBIE_KNOCKBACK_TIME` (0,15 s, desacelerando).
+- Diagonal bloqueada: tenta os eixos. Parede, porta fechada, quina, outro zumbi ou o personagem no caminho: não é lançado (fica no tile em que estava desenhado).
+- O golpe cancela o passo e o preparo do golpe do zumbi; durante o voo ele não anda nem ataca, e depois volta a vagar/perseguir dali. Se cair fora da sala, a sala dele passa a ser onde caiu.
+- Quem morre com o golpe não é lançado: afunda onde está (inclusive se morrer no meio do voo).
+
 ### Feedback
 - **Números de dano** (`FloatingText`) sobem e somem em `DAMAGE_TEXT_TIME` s: vermelho para 11, laranja para 6, claro para 4, com contorno escuro.
 - Contador **Abatidos** no HUD.
 
+## Vida do personagem (`player.py`, `zombies.py`, `main.py`)
+
+### Golpe do zumbi
+- Zumbi em `chase` **colado** no personagem (reto ou diagonal sem quina de parede no meio) prepara o golpe por `ZOMBIE_ATTACK_WINDUP` (0,4 s) e bate: **2 de dano** (`ZOMBIE_DAMAGE`). Depois espera `ZOMBIE_ATTACK_COOLDOWN` (1 s) antes de preparar de novo. Se o personagem sair de perto durante o preparo, o golpe é cancelado.
+- `Horde.update` devolve os zumbis que bateram no quadro; `Game.zombie_hits` aplica no personagem (`Player.take_hit`).
+
+### Dano e empurrão
+- Vida inicial **10** (`PLAYER_HP`): cinco golpes de zumbi.
+- `take_hit` cancela o passo e o ataque, vira o personagem **para o zumbi** e o **empurra 1 tile para o lado oposto** (8 direções: zumbi na diagonal empurra na diagonal), em `KNOCKBACK_TIME` (0,15 s, desacelerando). Se estava no meio de um passo, parte do tile em que está desenhado.
+- Empurrão bloqueado (parede, porta fechada, zumbi, quina): tenta os eixos da diagonal; se nada estiver livre, não é empurrado.
+- Animação: com empurrão, `hurt_<direção>` (6 quadros: silhueta branca, recuando, no ar, caindo, caído, de pé); sem empurrão, `hurt_light_<direção>` (4 quadros). `HURT_FPS` = 12 (0,5 s / 0,33 s). Durante a animação ele **não anda, não vira e não ataca**.
+- Depois fica `PLAYER_INVULN_TIME` (1 s) **invulnerável, piscando** (já pode agir). Durante o dano também não leva outro golpe — vários zumbis em volta não tiram 6 de uma vez.
+- Feedback: número `-2` vermelho subindo, **moldura vermelha** nas bordas da tela (`HIT_SCREEN_FLASH`) e a barra **Vida** no HUD (marcas a cada 2 de vida).
+
+### Game over
+- Vida 0: o personagem cai (animação de empurrão parada no quadro "caído"), os controles e os zumbis param de agir sobre ele, a tela escurece e aparece **GAME OVER**.
+- Depois de `GAME_OVER_TIME` (3 s) a **mesma dungeon** (mesma seed) recomeça do zero: vida cheia, zumbis enterrados de novo, névoa zerada.

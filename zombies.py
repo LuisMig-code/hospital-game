@@ -1,6 +1,8 @@
 """Zumbis: nascem enterrados nas salas, saem do chão quando o jogador os vê
 e depois ficam vagando pela sala (andam alguns tiles numa das 8 direções,
 retas ou diagonais, param um pouco...).
+Com o personagem a até ZOMBIE_CHASE_RADIUS tiles, vão atrás dele (podem
+sair da sala por portas abertas) e, colados nele, preparam e dão o golpe.
 Têm vida: levam dano dos golpes do personagem e, ao morrer, afundam de
 volta no chão (a animação de surgir ao contrário).
 
@@ -9,6 +11,7 @@ superfícies das animações.
 """
 import math
 import random
+from collections import deque
 
 import pygame
 
@@ -26,16 +29,66 @@ def facing_for(dx, dy):
     if dx:
         return "right" if dx > 0 else "left"
     return "down" if dy > 0 else "up"
+
+
 FRAMES = {name: count for _, name, count in ZOMBIE_ROWS}
 
-UNDERGROUND, EMERGING, IDLE, WALK = "underground", "emerging", "idle", "walk"
+UNDERGROUND, EMERGING, IDLE, WALK, CHASE = "underground", "emerging", "idle", "walk", "chase"
 DYING, DEAD = "dying", "dead"
-SOLID_STATES = (EMERGING, IDLE, WALK)      # bloqueiam e podem levar dano
+SOLID_STATES = (EMERGING, IDLE, WALK, CHASE)      # bloqueiam e podem levar dano
 
 
 def in_room(room, tile):
     x, y = tile
     return room.x <= x < room.x + room.w and room.y <= y < room.y + room.h
+
+
+def chebyshev(a, b):
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+
+def can_step(dungeon, tile, move):
+    """Passo de `tile` em `move` sem cortar quina: na diagonal, os dois
+    tiles retos atravessados também têm que ser andáveis."""
+    (x, y), (dx, dy) = tile, move
+    if not dungeon.is_walkable(x + dx, y + dy):
+        return False
+    return not (dx and dy) or (dungeon.is_walkable(x + dx, y) and dungeon.is_walkable(x, y + dy))
+
+
+def touching(dungeon, a, b):
+    """`a` e `b` são vizinhos (reto ou diagonal sem quina de parede no meio):
+    dá para o zumbi em `a` acertar quem está em `b`."""
+    if chebyshev(a, b) != 1:
+        return False
+    return can_step(dungeon, a, (b[0] - a[0], b[1] - a[1]))
+
+
+def chase_step(dungeon, start, goal, blocked, limit):
+    """Primeiro passo do caminho mais curto (8 direções, sem cortar quina,
+    sem passar por `blocked`) de `start` até um tile colado em `goal`.
+    Só procura tiles a até `limit` de `goal`. None se não há caminho."""
+    if touching(dungeon, start, goal):
+        return None
+    first = {start: None}
+    queue = deque([start])
+    while queue:
+        tile = queue.popleft()
+        for move in MOVES:                       # retos primeiro: caminho mais "reto"
+            nxt = (tile[0] + move[0], tile[1] + move[1])
+            if nxt in first or nxt in blocked or nxt == goal or chebyshev(nxt, goal) > limit:
+                continue
+            if not can_step(dungeon, tile, move):
+                continue
+            first[nxt] = first[tile] or move
+            if touching(dungeon, nxt, goal):
+                return first[nxt]
+            queue.append(nxt)
+    return None
+
+
+def room_at(dungeon, tile):
+    return next((r for r in dungeon.rooms if in_room(r, tile)), None)
 
 
 class Zombie:
@@ -56,6 +109,12 @@ class Zombie:
         self.hp = S.ZOMBIE_HP
         self.flash = 0.0        # tempo restante piscando (levou dano)
         self.hp_bar = 0.0       # tempo restante mostrando a barra de vida
+        self.windup = None      # preparando o golpe: segundos que faltam
+        self.cooldown = 0.0     # espera depois de um golpe
+        self.lunge = 0.0        # avanço visual do golpe (0..1)
+        self.lunge_dir = (0, 1)
+        self.knock_from = None  # (x, y) de onde começou o empurrão (levou golpe)
+        self.knock_time = 0.0
 
     @property
     def active(self):
@@ -86,26 +145,118 @@ class Zombie:
             self.hp = 0
             self.state = DYING
             self.target = None
+            self.windup, self.lunge = None, 0.0
+            self.knock_from = None             # morre onde estiver (afunda ali)
             self.anim, self.frame, self.frame_time = "emerge", FRAMES["emerge"] - 1, 0.0
             return True
         return False
 
+    KNOCKABLE = (IDLE, WALK, CHASE)
+
+    def knock_back(self, source, dungeon, blocked=frozenset()):
+        """Levou golpe vindo de `source` (tile do personagem) e sobreviveu:
+        é lançado 1 tile para o lado oposto (8 direções). Diagonal bloqueada
+        tenta os eixos; parede, porta fechada, quina ou alguém atrás: fica.
+        Cancela o passo e o preparo do golpe. Devolve True se foi lançado."""
+        if self.state not in self.KNOCKABLE or self.knock_from is not None:
+            return False
+        x, y = self.tile = self.pixel_tile()      # no meio de um passo: o tile desenhado
+        self.target = None
+        self.windup = None
+        self.steps_left = 0
+        dx = (x > source[0]) - (x < source[0])
+        dy = (y > source[1]) - (y < source[1])
+        if not (dx or dy):
+            return False
+        cands = ([(dx, dy)] if dx and dy else []) + ([(dx, 0)] if dx else []) + ([(0, dy)] if dy else [])
+        for move in cands:
+            dest = (x + move[0], y + move[1])
+            if dest not in blocked and can_step(dungeon, (x, y), move):
+                self.target = dest
+                self.knock_from, self.knock_time = (self.x, self.y), 0.0
+                return True
+        # não foi lançado: encaixa no centro do tile (estava no meio de um passo)
+        self.x, self.y = tile_center(self.tile)
+        return False
+
+    def _update_knock(self, dt, dungeon):
+        """Voo do empurrão (desacelerando). Ao cair, passa a vagar/perseguir
+        a partir dali; se caiu fora da sala, a "sala" dele é onde está."""
+        self.knock_time += dt
+        p = min(1.0, self.knock_time / S.ZOMBIE_KNOCKBACK_TIME)
+        ease = 1 - (1 - p) ** 2
+        (x0, y0), (tx, ty) = self.knock_from, tile_center(self.target)
+        self.x, self.y = x0 + (tx - x0) * ease, y0 + (ty - y0) * ease
+        if p >= 1:
+            self.x, self.y = tx, ty
+            self.tile, self.target = self.target, None
+            self.knock_from = None
+            if self.room is None or not in_room(self.room, self.tile):
+                self.room = room_at(dungeon, self.tile)
+
     # ----------------------------------------------------------------- lógica
+    def _in_area(self, tile, dungeon):
+        """Onde o zumbi vaga: a sala dele; fora de sala (depois de uma
+        perseguição), o corredor — qualquer chão menos as portas."""
+        if self.room is None:
+            return tile not in dungeon.door_at
+        return in_room(self.room, tile)
+
     def _can_enter(self, tile, dungeon, blocked):
-        return in_room(self.room, tile) and dungeon.is_walkable(*tile) and tile not in blocked
+        return self._in_area(tile, dungeon) and dungeon.is_walkable(*tile) and tile not in blocked
 
     def _can_step(self, move, dungeon, blocked):
         """Passo reto ou diagonal. A diagonal não corta quina: os dois tiles
-        retos que ela atravessa também têm que ser chão da sala."""
+        retos que ela atravessa também têm que ser chão da área."""
         dx, dy = move
         x, y = self.tile
         if not self._can_enter((x + dx, y + dy), dungeon, blocked):
             return False
         if dx and dy:
             for t in ((x + dx, y), (x, y + dy)):
-                if not (in_room(self.room, t) and dungeon.is_walkable(*t)):
+                if not (self._in_area(t, dungeon) and dungeon.is_walkable(*t)):
                     return False
         return True
+
+    def _start_chase(self):
+        self.state = CHASE
+        self.windup = None
+
+    def _end_chase(self, dungeon, rng):
+        """Personagem longe: volta a vagar na sala (ou corredor) onde está."""
+        self.windup = None
+        self.room = room_at(dungeon, self.tile)
+        self._go_idle(rng)
+
+    def _update_chase(self, dt, dungeon, blocked, player_tile):
+        """Parado num tile: colado no personagem prepara/dá o golpe; senão
+        dá o próximo passo do caminho até ele. Devolve True no golpe."""
+        px, py = player_tile
+        if touching(dungeon, self.tile, player_tile):
+            dx, dy = px - self.tile[0], py - self.tile[1]
+            self.facing = facing_for(dx, dy)
+            self.lunge_dir = (dx, dy)
+            if self.windup is None:
+                if self.cooldown <= 0:
+                    self.windup = S.ZOMBIE_ATTACK_WINDUP
+                return False
+            self.windup -= dt
+            if self.windup <= 0:
+                self.windup = None
+                self.cooldown = S.ZOMBIE_ATTACK_COOLDOWN
+                self.lunge = 1.0
+                return True
+            return False
+        self.windup = None                     # o personagem saiu de perto
+        step = chase_step(dungeon, self.tile, player_tile, blocked,
+                          S.ZOMBIE_CHASE_RADIUS + S.ZOMBIE_CHASE_SEARCH)
+        if step is None:                       # sem caminho: espera virado para ele
+            self.facing = facing_for(px - self.tile[0], py - self.tile[1])
+        else:
+            self.move = step
+            self.facing = facing_for(*step)
+            self.target = (self.tile[0] + step[0], self.tile[1] + step[1])
+        return False
 
     def _go_idle(self, rng):
         self.state = IDLE
@@ -126,12 +277,16 @@ class Zombie:
         self.state = IDLE
         self.timer = rng.uniform(0.1, 0.3)
 
-    def update(self, dt, dungeon, blocked, rng):
-        """blocked: tiles ocupados pelo personagem e pelos outros zumbis."""
+    def update(self, dt, dungeon, blocked, rng, player_tile=None):
+        """blocked: tiles ocupados pelo personagem e pelos outros zumbis.
+        player_tile: onde o personagem está (None: morto/ausente, não persegue).
+        Devolve True quando o golpe do zumbi acerta neste quadro."""
         if self.state in (UNDERGROUND, DEAD):
-            return
+            return False
         self.flash = max(0.0, self.flash - dt)
         self.hp_bar = max(0.0, self.hp_bar - dt)
+        self.cooldown = max(0.0, self.cooldown - dt)
+        self.lunge = max(0.0, self.lunge - dt / 0.2)
 
         if self.state == DYING:
             # surgir ao contrário: afunda de volta no chão
@@ -140,15 +295,34 @@ class Zombie:
             if frame < 0:
                 self.state = DEAD
             self.frame = max(0, frame)
-            return
+            return False
         if self.state == EMERGING:
             self.frame_time += dt
             if self.frame_time * S.ZOMBIE_EMERGE_FPS >= FRAMES["emerge"]:
                 self._go_idle(rng)
             self._animate(0)
-            return
+            return False
+        if self.knock_from is not None:        # sendo lançado pelo golpe
+            self._update_knock(dt, dungeon)
+            self._animate(dt)
+            return False
 
-        if self.state == IDLE:
+        # Perto do personagem persegue; longe, volta a vagar. A troca só
+        # acontece parado num tile (nunca no meio de um passo).
+        hit = False
+        if self.target is None:
+            near = player_tile is not None and chebyshev(self.tile, player_tile) <= S.ZOMBIE_CHASE_RADIUS
+            if near and self.state != CHASE:
+                self._start_chase()
+            elif not near and self.state == CHASE:
+                self._end_chase(dungeon, rng)
+            elif self.state != CHASE and self.room is None and room_at(dungeon, self.tile):
+                self.room = room_at(dungeon, self.tile)   # do corredor entrou numa sala: vaga nela
+
+        if self.state == CHASE:
+            if self.target is None:
+                hit = self._update_chase(dt, dungeon, blocked, player_tile)
+        elif self.state == IDLE:
             self.time_in[IDLE] += dt
             self.timer -= dt
             if self.timer <= 0:
@@ -161,26 +335,31 @@ class Zombie:
                     self.target = (self.tile[0] + dx, self.tile[1] + dy)
                 else:
                     self._go_idle(rng)
-            if self.target is not None:
-                tx, ty = tile_center(self.target)
-                step = S.ZOMBIE_SPEED * dt
-                dist = math.hypot(tx - self.x, ty - self.y)   # reto ou diagonal: mesma velocidade
-                if step >= dist:
-                    self.x, self.y = tx, ty
-                    self.tile, self.target = self.target, None
-                    self.steps_left -= 1
-                else:
-                    k = step / dist
-                    self.x += (tx - self.x) * k
-                    self.y += (ty - self.y) * k
+        if self.target is not None:
+            if self.state == CHASE:
+                self.time_in[WALK] += dt
+            tx, ty = tile_center(self.target)
+            speed = S.ZOMBIE_CHASE_SPEED if self.state == CHASE else S.ZOMBIE_SPEED
+            step = speed * dt
+            dist = math.hypot(tx - self.x, ty - self.y)   # reto ou diagonal: mesma velocidade
+            if step >= dist:
+                self.x, self.y = tx, ty
+                self.tile, self.target = self.target, None
+                self.steps_left -= 1
+            else:
+                k = step / dist
+                self.x += (tx - self.x) * k
+                self.y += (ty - self.y) * k
         self._animate(dt)
+        return hit
 
     def _animate(self, dt):
         if self.state == EMERGING:
             anim = "emerge"
             frame = min(FRAMES["emerge"] - 1, int(self.frame_time * S.ZOMBIE_EMERGE_FPS))
         else:
-            anim = f"walk_{self.facing}" if self.state == WALK else "idle"
+            walking = self.state == WALK or (self.state == CHASE and self.target is not None)
+            anim = f"walk_{self.facing}" if walking else "idle"
             if anim != self.anim:
                 self.anim, self.frame_time = anim, 0.0
             self.frame_time += dt
@@ -195,9 +374,21 @@ class Zombie:
     def feet_y(self):
         return self.y + S.TILE / 2
 
+    def attack_offset(self):
+        """Deslocamento visual do golpe (o sheet não tem animação de ataque):
+        preparando, recua um pouco; no golpe, avança para o personagem."""
+        dx, dy = self.lunge_dir
+        n = math.hypot(dx, dy) or 1.0
+        if self.windup is not None:
+            k = -2.5 * (1 - self.windup / S.ZOMBIE_ATTACK_WINDUP)
+        else:
+            k = S.ZOMBIE_LUNGE * self.lunge
+        return dx / n * k, dy / n * k
+
     def draw(self, surf, camera, anims):
         img = anims[self.anim][self.frame]
-        feet = (round(self.x - camera[0]), round(self.feet_y() - camera[1]))
+        ox, oy = self.attack_offset()
+        feet = (round(self.x + ox - camera[0]), round(self.feet_y() + oy - camera[1]))
         sunk = self.state in (EMERGING, DYING) and self.frame < 4
         if not sunk:   # buraco no chão não tem sombra
             shadow = Player.shadow()
@@ -248,7 +439,12 @@ class Horde:
         self.killed = 0
 
     def update(self, dt, player, visible):
+        """Atualiza todos. Devolve os zumbis cujo golpe acertou o personagem
+        neste quadro (main aplica o dano)."""
         player_occ = {player.tile} if player.target is None else {player.tile, player.target}
+        alive = not getattr(player, "dead", False)
+        player_tile = player.pixel_tile() if alive else None
+        hits = []
         # acorda os que o jogador está vendo (se ele não estiver em cima)
         for z in self.zombies:
             if z.state == UNDERGROUND and z.tile in visible and z.tile not in player_occ:
@@ -260,12 +456,14 @@ class Horde:
             for o in self.zombies:
                 if o is not z and o.solid:
                     others |= o.occupied()
-            z.update(dt, self.dungeon, player_occ | others, self.rng)
+            if z.update(dt, self.dungeon, player_occ | others, self.rng, player_tile):
+                hits.append(z)
         # quem terminou de afundar sai do jogo
         dead = [z for z in self.zombies if z.state == DEAD]
         if dead:
             self.killed += len(dead)
             self.zombies = [z for z in self.zombies if z.state != DEAD]
+        return hits
 
     def blocked_tiles(self):
         """Tiles que o personagem não pode ocupar (zumbis fora do chão e vivos)."""

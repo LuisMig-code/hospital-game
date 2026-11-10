@@ -8,12 +8,12 @@
 | `settings.py` | Constantes (tela, cores, velocidades, estamina, visão, zoom) | — |
 | `dungeon.py` | Gera o grid da dungeon a partir da seed; spawn | `generate`, `Dungeon`, `Room`, `WALL`, `FLOOR`, `normalize_seed` |
 | `doors.py` | Onde ficam as portas e abrir/fechar | `Door`, `place_doors`, `try_toggle` |
-| `player.py` | Movimento tile a tile, corrida, estamina, animação | `Player`, `tile_center` |
-| `zombies.py` | Zumbis: spawn por sala, estados (enterrado, surgindo, parado, andando, morrendo), colisão, vida | `Zombie`, `Horde`, `spawn_zombies` |
+| `player.py` | Movimento tile a tile, corrida, estamina, ataque, vida (golpe, empurrão, invulnerabilidade, morte), animação | `Player`, `tile_center` |
+| `zombies.py` | Zumbis: spawn por sala, estados (enterrado, surgindo, parado, andando, perseguindo, morrendo), caminho até o personagem, golpe, colisão, vida | `Zombie`, `Horde`, `spawn_zombies`, `chase_step` |
 | `combat.py` | Área de dano do golpe, aplicação nos zumbis, números de dano | `damage_map`, `apply_attack`, `FloatingText`, `texts_for` |
 | `fov.py` | Campo de visão e tiles já explorados | `compute_fov`, `Vision`, `in_radius` |
 | `lighting.py` | Névoa suave (1 pixel por tile, ampliada) e luz com queda/tremulação | `FogLayer`, `Light`, `build_light_mask` |
-| `sprites.py` | Recorta os sprite sheets do personagem (andando e atacando) e do zumbi | `load_animations`, `load_attack_animations`, `load_zombie_animations` |
+| `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando e levando dano) e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_zombie_animations` |
 | `tileset.py` | Recorta o tileset do hospital e desenha o mapa e as portas | `load_pieces`, `Tileset`, `render_map`, `draw_door` |
 
 Dependências entre módulos (setas = "usa"):
@@ -45,13 +45,14 @@ sprites ► settings
 3. A cada frame (`Game.run`):
    - eventos de teclado (R, G, V, Espaço, ESC) e da roda do mouse (→ `change_zoom`);
    - Espaço → `action()`: primeiro `toggle_door()` (`try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada com `update_vision(force=True)`); se não há porta à frente nem embaixo do personagem → `player.request_attack()`;
-   - `horde.update(dt, player, vision.visible)` — acorda os zumbis vistos e move os ativos;
    - a lógica do quadro fica em `Game.step(dt, teclas)` (os testes a usam sem janela):
+   - `horde.update(dt, player, vision.visible)` — acorda os zumbis vistos, move os ativos (vagando ou perseguindo) e devolve os que bateram no personagem → `zombie_hits` → `player.take_hit` (vida, empurrão, `-2`, moldura vermelha);
+   - personagem morto: conta `GAME_OVER_TIME` e chama `new_level` com a mesma seed;
    - `player.update(dt, teclas, dungeon, blocked=horde.blocked_tiles())` — zumbis vivos bloqueiam; no quadro do golpe devolve o tile de impacto → `apply_attack(horde, impacto, tile do personagem, vision.visible)` → números de dano (`texts_for`);
    - `update_vision()` — recalcula a visão se o personagem mudou de tile e atualiza a névoa (`FogLayer.update`);
    - `light.update(dt)` — tremulação da luz;
    - `update_zoom(dt)` — o zoom anda suavemente até o alvo pedido pela roda;
-   - `draw_world()` e `draw_hud()`.
+   - `draw_world()`, `draw_hit_flash()`, `draw_hud()` e `draw_game_over()`.
 
 ## Ordem de desenho (`draw_world`)
 
@@ -64,7 +65,7 @@ O mundo é desenhado numa superfície do tamanho da área visível (`view_size()
 5. luz em volta do personagem (`Light.draw`) e névoa suave (`FogLayer.render`) — as duas só com a névoa ligada (V);
 6. números de dano flutuando (por cima da névoa, para ler bem).
 
-O HUD (seed, tile, zoom, abatidos, estamina, mensagens temporárias; controles num painel no rodapé) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto, depois da escala, para não mudar de tamanho com o zoom.
+O HUD (seed, tile, zoom, abatidos, vida, estamina, mensagens temporárias; controles num painel no rodapé) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto, depois da escala, para não mudar de tamanho com o zoom.
 
 ## Coordenadas
 

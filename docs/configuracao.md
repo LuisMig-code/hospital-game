@@ -104,3 +104,22 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `HIT_FLASH_TIME` | 0.12 | Segundos piscando ao levar dano |
 | `HP_BAR_TIME` | 2.0 | Segundos mostrando a barra de vida depois de um golpe |
 | `DAMAGE_TEXT_TIME` | 0.7 | Segundos do número de dano flutuando |
+
+## Vida do personagem e ataque dos zumbis
+
+| Constante | Valor | Descrição |
+|---|---|---|
+| `PLAYER_HP` | 10 | Vida do personagem |
+| `ZOMBIE_DAMAGE` | 2 | Dano de cada golpe de zumbi |
+| `ZOMBIE_CHASE_RADIUS` | 3 | Distância (tiles, Chebyshev) em que o zumbi persegue |
+| `ZOMBIE_CHASE_SPEED` | 70 | Velocidade perseguindo, em px/s |
+| `ZOMBIE_CHASE_SEARCH` | 6 | Quanto além do raio a busca do caminho pode ir |
+| `ZOMBIE_ATTACK_WINDUP` | 0.4 | Segundos preparando o golpe |
+| `ZOMBIE_ATTACK_COOLDOWN` | 1.0 | Segundos entre um golpe e o próximo preparo |
+| `ZOMBIE_LUNGE` | 7 | Pixels que o zumbi avança ao bater (só visual) |
+| `KNOCKBACK_TIME` | 0.15 | Duração do empurrão de 1 tile (personagem) |
+| `ZOMBIE_KNOCKBACK_TIME` | 0.15 | Duração do zumbi sendo lançado 1 tile pelo golpe do personagem |
+| `HURT_FPS` | 12 | Quadros por segundo da animação de dano |
+| `PLAYER_INVULN_TIME` | 1.0 | Segundos invulnerável (piscando) depois do dano |
+| `HIT_SCREEN_FLASH` | 0.35 | Segundos da moldura vermelha ao levar golpe |
+| `GAME_OVER_TIME` | 3.0 | Segundos de GAME OVER antes de recomeçar a mesma dungeon |

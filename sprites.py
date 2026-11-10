@@ -6,7 +6,8 @@ canal alpha em vez de divisão fixa.
 """
 import pygame
 
-from settings import ATTACK_SHEET, CHARACTER_SHEET, PLAYER_SPRITE_HEIGHT, ZOMBIE_SHEET, ZOMBIE_SIZE
+from settings import (ATTACK_SHEET, CHARACTER_SHEET, DAMAGE_SHEET, PLAYER_SPRITE_HEIGHT, ZOMBIE_SHEET,
+                      ZOMBIE_SIZE)
 
 # Ordem das linhas no sheet
 ROW_NAMES = ["idle", "walk_right", "walk_left", "walk_up", "walk_down"]
@@ -325,6 +326,61 @@ def load_attack_animations(target_height=PLAYER_SPRITE_HEIGHT, raw=False):
                 f, (max(1, round(f.get_width() * scale)), max(1, round(f.get_height() * scale))))
                 for f in frames]
     anims["attack_left"] = [pygame.transform.flip(f, True, False) for f in anims["attack_right"]]
+    return anims
+
+
+# ---------------------------------------------------------------------- dano
+# Sheet de dano: 8 linhas numa grade de 6 colunas (1024 / 6 px de passo).
+# Linhas 0-3: dano curto (4 quadros); linhas 4-7: dano com empurrão (6 quadros:
+# silhueta branca, recuando, no ar, caindo, caído, de pé). Linha -> animação;
+# as direções que faltam (ou estão confusas no sheet) são espelhadas.
+DAMAGE_COLS = 6
+DAMAGE_SHEET_ROWS = 8
+DAMAGE_ROWS = {
+    0: ("hurt_light_down", 4),
+    2: ("hurt_light_left", 4),
+    3: ("hurt_light_up", 4),
+    4: ("hurt_down", 6),
+    5: ("hurt_right", 6),
+    7: ("hurt_up", 6),
+}
+DAMAGE_MIRROR = {"hurt_light_right": "hurt_light_left", "hurt_left": "hurt_right"}
+HURT_FALLEN_FRAME = 4    # quadro "caído" do empurrão (o personagem morto fica nele)
+
+
+def load_damage_animations(target_height=PLAYER_SPRITE_HEIGHT, raw=False):
+    """{hurt_<direção>: [...], hurt_light_<direção>: [...]} do personagem levando dano.
+
+    Mesmo esquema do ataque: cada quadro vai do topo do desenho até a base
+    da linha e é centralizado pelo cabelo, para desenhar pelo meio da base.
+    target_height: altura do último quadro de "hurt_down" (de pé) na tela."""
+    sheet = pygame.image.load(str(DAMAGE_SHEET))
+    if pygame.display.get_surface() is not None:
+        sheet = sheet.convert_alpha()
+    w, h = sheet.get_size()
+    mask = pygame.mask.from_surface(sheet, 40)
+    rows = _keep_largest(_runs(_row_counts(mask, 0, 0, w, h)), DAMAGE_SHEET_ROWS)
+
+    anims = {}
+    for row, (name, count) in DAMAGE_ROWS.items():
+        y0, y1 = rows[row]
+        frames = []
+        for c in range(count):
+            x0, x1 = round(c * w / DAMAGE_COLS), round((c + 1) * w / DAMAGE_COLS)
+            cell = _clean_attack_outline(sheet.subsurface((x0, y0, x1 - x0, y1 - y0)))
+            bb = _opaque_bbox(cell)
+            crop = cell.subsurface((bb.x, bb.y, bb.w, cell.get_height() - bb.y))
+            hair = _opaque_bbox(crop.subsurface((0, 0, bb.w, max(1, round(bb.h * 0.22)))))
+            frames.append(_anchored(crop.copy(), round(hair.centerx)))
+        anims[name] = frames
+    if not raw:
+        scale = target_height / anims["hurt_down"][-1].get_height()
+        for name, frames in anims.items():
+            anims[name] = [pygame.transform.smoothscale(
+                f, (max(1, round(f.get_width() * scale)), max(1, round(f.get_height() * scale))))
+                for f in frames]
+    for name, src in DAMAGE_MIRROR.items():
+        anims[name] = [pygame.transform.flip(f, True, False) for f in anims[src]]
     return anims
 
 

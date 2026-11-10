@@ -48,8 +48,23 @@ O sheet só tem `idle` de frente. Para parado olhando para os lados/costas, `loa
 
 ## Personagem levando dano — `assets/personagem/damage.png`
 
-- 1024×1536 px, 8 linhas: as 4 primeiras com 4 quadros (piscar branco, dor, recuperação) e as 4 últimas com 6 (piscar, dor, caindo, ajoelhado, levantando).
-- **Ainda sem uso**: entra quando os zumbis começarem a atacar.
+- 1024×1536 px, 8 linhas numa grade de **6 colunas** (1024 / 6 px de passo; as linhas são achadas pela projeção do alpha). As 4 primeiras têm 4 quadros (dano curto: silhueta branca, dor, recuperando) e as 4 últimas 6 (dano com empurrão: silhueta branca, recuando, no ar, caindo, caído, de pé).
+- Recortado por `load_damage_animations` em `sprites.py` (`DAMAGE_ROWS`):
+
+| Linha | Animação |
+|---|---|
+| 0 | `hurt_light_down` |
+| 1 | (não usada: outra versão de frente) |
+| 2 | `hurt_light_left` (`hurt_light_right` = espelhada) |
+| 3 | `hurt_light_up` |
+| 4 | `hurt_down` |
+| 5 | `hurt_right` (`hurt_left` = espelhada) |
+| 6 | (não usada: direção confusa no desenho) |
+| 7 | `hurt_up` |
+
+- Mesmo tratamento do ataque: contorno magenta removido (`_clean_attack_outline`), quadro do topo do desenho até a base da linha, **centralizado pelo cabelo**, e escala para o último quadro de `hurt_down` (de pé) ter a altura do `idle`.
+- O quadro 4 do empurrão (`HURT_FALLEN_FRAME`, caído) é onde o personagem fica no game over.
+- `tools/export_frames.py` salva os quadros em `assets/personagem/damage_frames/` (ignorada pelo git).
 
 ## Tileset do hospital — `assets/background/hospital-tiles.png`
 

@@ -7,7 +7,7 @@ CHARACTER_SHEET = ASSETS / "personagem" / "Chibi Character Animation Sprite Shee
 TILESET = ASSETS / "background" / "hospital-tiles.png"
 ZOMBIE_SHEET = ASSETS / "monster" / "zombie_spritesheet_32x32.png"
 ATTACK_SHEET = ASSETS / "personagem" / "atack_spritsheet.png"
-DAMAGE_SHEET = ASSETS / "personagem" / "damage.png"   # ainda sem uso (zumbis ainda não atacam)
+DAMAGE_SHEET = ASSETS / "personagem" / "damage.png"   # personagem levando dano (com e sem empurrão)
 
 # Tela / grid
 TILE = 32
@@ -85,3 +85,19 @@ ZOMBIE_DEATH_FPS = 14           # zumbi afundando no chão ao morrer (surgir ao 
 HIT_FLASH_TIME = 0.12           # segundos piscando ao levar dano
 HP_BAR_TIME = 2.0               # segundos mostrando a barra de vida depois de um golpe
 DAMAGE_TEXT_TIME = 0.7          # segundos do número de dano flutuando
+
+# Vida do personagem e ataque dos zumbis
+PLAYER_HP = 10                  # vida do personagem
+ZOMBIE_DAMAGE = 2               # dano de cada golpe de zumbi
+ZOMBIE_CHASE_RADIUS = 3         # zumbis a até 3 tiles (Chebyshev) perseguem o personagem
+ZOMBIE_CHASE_SPEED = 70         # pixels por segundo perseguindo (vagando: ZOMBIE_SPEED)
+ZOMBIE_CHASE_SEARCH = 6         # o caminho é procurado até essa distância além do raio
+ZOMBIE_ATTACK_WINDUP = 0.4      # segundos preparando o golpe, colado no personagem
+ZOMBIE_ATTACK_COOLDOWN = 1.0    # segundos entre um golpe e o próximo preparo
+ZOMBIE_LUNGE = 7                # pixels que o zumbi avança ao dar o golpe (só visual)
+KNOCKBACK_TIME = 0.15           # segundos do empurrão de 1 tile ao levar um golpe
+ZOMBIE_KNOCKBACK_TIME = 0.15    # segundos do zumbi sendo lançado 1 tile ao levar golpe do personagem
+HURT_FPS = 12                   # animação de dano (6 quadros com empurrão = 0,5 s)
+PLAYER_INVULN_TIME = 1.0        # segundos invulnerável (piscando) depois do dano
+HIT_SCREEN_FLASH = 0.35         # segundos do vermelho nas bordas da tela ao levar golpe
+GAME_OVER_TIME = 3.0            # segundos de "GAME OVER" antes de recomeçar a mesma dungeon

@@ -14,7 +14,7 @@ from combat import FloatingText, apply_attack, damage_map, texts_for  # noqa: E4
 from dungeon import generate  # noqa: E402
 from player import DIRS, tile_center  # noqa: E402
 from sprites import is_attack_outline, load_animations, load_attack_animations  # noqa: E402
-from zombies import DEAD, DYING, IDLE, UNDERGROUND, Horde, Zombie  # noqa: E402
+from zombies import DEAD, DYING, IDLE, UNDERGROUND, WALK, Horde, Zombie  # noqa: E402
 
 DT = 1 / 60
 
@@ -22,6 +22,9 @@ DT = 1 / 60
 class FakePlayer:
     def __init__(self, tile):
         self.tile, self.target = tile, None
+
+    def pixel_tile(self):
+        return self.tile
 
 
 class DamageMapTests(unittest.TestCase):
@@ -177,6 +180,108 @@ class AttackSpriteTests(unittest.TestCase):
                           if img.get_at((x, y)).a > 40 and is_attack_outline(img.get_at((x, y)))
                           and max(img.get_at((x, y)).r, img.get_at((x, y)).b) > 90)
                 self.assertEqual(bad, 0)
+
+
+class KnockbackTests(unittest.TestCase):
+    """Zumbi que sobrevive ao golpe é lançado 1 tile para longe do personagem."""
+
+    def setUp(self):
+        self.d = generate(42)
+        self.horde = Horde(self.d, avoid=[self.d.spawn])
+        self.room = max(self.d.rooms, key=lambda r: r.w * r.h)
+        r = self.room
+        self.c = (r.x + r.w // 2, r.y + r.h // 2)
+        self.horde.zombies = []
+        self.visible = {(x, y) for x in range(r.x - 1, r.x + r.w + 1) for y in range(r.y - 1, r.y + r.h + 1)}
+
+    def add(self, tile):
+        z = Zombie(tile, self.room)
+        z.state = IDLE
+        self.horde.zombies.append(z)
+        return z
+
+    def attack(self, impact, player_tile):
+        return apply_attack(self.horde, impact, player_tile, self.visible,
+                            dungeon=self.d, player_occ={player_tile})
+
+    def fly(self):
+        """Roda cada zumbi lançado até ele cair (e confere o tempo do voo)."""
+        for z in self.horde.zombies:
+            if z.knock_from is None:
+                continue
+            frames = 0
+            while z.knock_from is not None:
+                z.update(DT, self.d, set(), self.horde.rng)
+                frames += 1
+            self.assertAlmostEqual(frames * DT, S.ZOMBIE_KNOCKBACK_TIME, delta=DT)
+
+    def test_straight_and_diagonal(self):
+        cx, cy = self.c
+        player = (cx, cy + 1)                      # olhando para cima, impacto em (cx, cy)
+        a = self.add((cx + 1, cy))                 # colado no impacto (6)
+        b = self.add((cx - 1, cy - 1))             # diagonal do personagem (6)
+        self.attack((cx, cy), player)
+        self.assertEqual((a.hp, b.hp), (4, 4))
+        self.assertEqual(a.target, (cx + 2, cy - 1))          # oposto ao personagem: (+1, -1)
+        self.assertEqual(b.target, (cx - 2, cy - 2))
+        self.fly()
+        self.assertEqual((a.tile, a.target, a.knock_from), ((cx + 2, cy - 1), None, None))
+        self.assertEqual((a.x, a.y), tile_center(a.tile))
+        self.assertEqual(b.tile, (cx - 2, cy - 2))
+
+    def test_straight_push(self):
+        cx, cy = self.c
+        z = self.add((cx, cy - 1))                 # 2 à frente: leva 6
+        self.attack((cx, cy), (cx, cy + 1))
+        self.assertEqual(z.target, (cx, cy - 2))   # para cima, longe do personagem
+
+    def test_killed_is_not_pushed(self):
+        cx, cy = self.c
+        z = self.add((cx, cy))                     # impacto: morre
+        self.attack((cx, cy), (cx, cy + 1))
+        self.assertEqual(z.state, DYING)
+        self.assertIsNone(z.target)
+        self.assertIsNone(z.knock_from)
+
+    def test_wall_behind_blocks(self):
+        r = self.room
+        x = r.x                                    # coluna colada na parede da esquerda
+        y = next(y for y in range(r.y + 2, r.y + r.h - 2) if not self.d.is_walkable(x - 1, y))
+        z = self.add((x, y))
+        self.attack((x + 1, y), (x + 2, y))        # personagem à direita, olhando para a esquerda
+        self.assertEqual(z.hp, 4)
+        self.assertIsNone(z.target)                # parede atrás: fica
+        self.assertIsNone(z.knock_from)
+
+    def test_zombie_behind_blocks(self):
+        cx, cy = self.c
+        front = self.add((cx, cy - 1))             # leva 6
+        behind = self.add((cx, cy - 2))            # 3 à frente do personagem: fora do golpe
+        self.attack((cx, cy), (cx, cy + 1))
+        self.assertEqual((front.hp, behind.hp), (4, S.ZOMBIE_HP))
+        self.assertIsNone(front.target)            # o de trás ocupa o tile
+        self.assertIsNone(behind.target)
+
+    def test_mid_step_uses_drawn_tile(self):
+        cx, cy = self.c
+        z = self.add((cx + 1, cy))
+        z.state, z.move, z.steps_left = WALK, (1, 0), 1
+        z.target = (cx + 2, cy)
+        z.x += S.TILE * 0.6                        # já desenhado em (cx+2, cy)
+        self.attack((cx + 1, cy), (cx, cy))        # olhando para a direita: impacto 11 em (cx+1)...
+        self.assertEqual(z.hp, 4)                  # ...mas ele está em (cx+2): leva 6
+        self.assertEqual(z.target, (cx + 3, cy))
+        self.fly()
+        self.assertEqual(z.tile, (cx + 3, cy))
+
+    def test_hit_again_while_flying_dies_where_it_is(self):
+        cx, cy = self.c
+        z = self.add((cx, cy - 1))
+        self.attack((cx, cy), (cx, cy + 1))
+        z.update(DT, self.d, set(), self.horde.rng)
+        z.hit(S.ZOMBIE_HP)
+        self.assertEqual(z.state, DYING)
+        self.assertIsNone(z.knock_from)
 
 
 if __name__ == "__main__":

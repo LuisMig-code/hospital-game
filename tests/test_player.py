@@ -326,5 +326,131 @@ class AttackTests(unittest.TestCase):
         self.assertEqual(len(hits), 1)
 
 
+HURT_ANIMS = dict(ANIMS)
+for _d in ("right", "left", "up", "down"):
+    HURT_ANIMS[f"hurt_{_d}"] = [pygame.Surface((10, 10))] * 6
+    HURT_ANIMS[f"hurt_light_{_d}"] = [pygame.Surface((10, 10))] * 4
+HURT_TIME = 6 / S.HURT_FPS
+
+
+class HitTests(unittest.TestCase):
+    """Golpe de zumbi: vida, empurrão para o lado oposto, invulnerabilidade, morte."""
+
+    def hit(self, p, source, dungeon=None, blocked=frozenset()):
+        return p.take_hit(S.ZOMBIE_DAMAGE, source, dungeon or OpenField(), blocked)
+
+    def settle(self, p, dungeon=None, keys=None):
+        run(p, keys or Keys(), HURT_TIME + 0.05, dungeon or OpenField())
+
+    def test_damage_and_straight_push(self):
+        p = Player(HURT_ANIMS, (5, 5))
+        self.assertEqual(p.hp, S.PLAYER_HP)
+        self.assertTrue(self.hit(p, (6, 5)))                       # zumbi à direita
+        self.assertEqual(p.hp, S.PLAYER_HP - S.ZOMBIE_DAMAGE)
+        self.assertEqual(p.facing, "right")                        # olha para o zumbi
+        self.assertEqual(p.anim, "hurt_right")
+        self.assertEqual(p.target, (4, 5))                         # empurrado para a esquerda
+        run(p, Keys(), S.KNOCKBACK_TIME + DT, OpenField())
+        self.assertEqual((p.tile, p.target), ((4, 5), None))
+        self.assertEqual((p.x, p.y), tile_center((4, 5)))
+
+    def test_diagonal_push(self):
+        p = Player(HURT_ANIMS, (5, 5))
+        self.hit(p, (6, 6))                                        # zumbi embaixo à direita
+        self.settle(p)
+        self.assertEqual(p.tile, (4, 4))
+
+    def test_wall_behind_no_push_uses_light_hurt(self):
+        g = Grid(["#####",
+                  "#...#",
+                  "#####"])
+        p = Player(HURT_ANIMS, (1, 1))
+        self.hit(p, (2, 1), g)                                     # parede atrás (à esquerda)
+        self.assertIsNone(p.target)
+        self.assertEqual(p.anim, "hurt_light_right")
+        self.settle(p, g)
+        self.assertEqual(p.tile, (1, 1))
+
+    def test_diagonal_push_slides_when_blocked(self):
+        g = Grid(["#####",
+                  "#...#",
+                  "#...#",
+                  "#####"])
+        p = Player(HURT_ANIMS, (1, 2))
+        self.hit(p, (2, 1), g)                       # recuar para (0,3), (0,2) ou (1,3): tudo parede
+        self.assertIsNone(p.target)
+        p = Player(HURT_ANIMS, (2, 1))
+        self.hit(p, (3, 2), g)                       # diagonal (1,0) é parede; desliza no eixo x
+        self.assertEqual(p.target, (1, 1))
+
+    def test_zombie_behind_blocks_push(self):
+        p = Player(HURT_ANIMS, (5, 5))
+        self.hit(p, (6, 5), blocked={(4, 5)})
+        self.assertIsNone(p.target)
+
+    def test_mid_step_starts_from_drawn_tile(self):
+        p = Player(HURT_ANIMS, (5, 5))
+        p.facing = "right"
+        run(p, Keys({pygame.K_d: True}), 0.12, OpenField())      # passou da metade do passo
+        self.assertEqual((p.tile, p.target), ((5, 5), (6, 5)))
+        self.hit(p, (7, 5))
+        self.assertEqual(p.target, (5, 5))                         # de (6,5) volta para (5,5)
+        self.settle(p)
+        self.assertEqual(p.tile, (5, 5))
+
+    def test_cancels_attack_and_locks_controls(self):
+        p = Player(HURT_ANIMS, (5, 5))
+        p.request_attack()
+        p.update(DT, Keys(), OpenField())
+        self.assertTrue(p.attacking)
+        self.hit(p, (5, 6))
+        self.assertFalse(p.attacking or p.attack_queued)
+        keys = Keys({pygame.K_s: True, pygame.K_LSHIFT: True})
+        for _ in range(round((HURT_TIME - 0.05) / DT)):
+            self.assertIsNone(p.update(DT, keys, OpenField()))     # sem golpe
+            self.assertTrue(p.hurt)
+            self.assertIn(p.tile, {(5, 5), (5, 4)})                # só o empurrão
+        run(p, keys, 0.6, OpenField())                             # acabou: volta a andar
+        self.assertFalse(p.hurt)
+        self.assertGreater(p.tile[1], 5)
+
+    def test_invulnerable_then_vulnerable(self):
+        p = Player(HURT_ANIMS, (5, 5))
+        self.hit(p, (6, 5))
+        self.assertFalse(self.hit(p, (6, 5)))                      # durante o dano
+        self.settle(p)
+        self.assertFalse(p.hurt)
+        self.assertGreater(p.invulnerable, 0)
+        self.assertFalse(self.hit(p, (5, 5)))                      # piscando
+        run(p, Keys(), S.PLAYER_INVULN_TIME, OpenField())
+        self.assertEqual(p.invulnerable, 0)
+        self.assertTrue(self.hit(p, (5, 5)))
+        self.assertEqual(p.hp, S.PLAYER_HP - 2 * S.ZOMBIE_DAMAGE)
+
+    def test_death(self):
+        p = Player(HURT_ANIMS, (5, 5))
+        p.hp = S.ZOMBIE_DAMAGE
+        self.hit(p, (6, 5))
+        self.assertEqual(p.hp, 0)
+        self.assertTrue(p.dead)
+        self.assertEqual(p.anim, "hurt_right")                     # cai com o empurrão
+        run(p, Keys({pygame.K_s: True}), 3.0, OpenField())
+        self.assertTrue(p.dead and p.hurt)                         # fica caído, sem controle
+        self.assertEqual(p.frame, 4)                               # quadro "caído"
+        self.assertEqual(p.tile, (4, 5))
+        self.assertFalse(self.hit(p, (3, 5)))                      # morto não leva golpe
+
+
+class DamageSpriteTests(unittest.TestCase):
+    def test_frames(self):
+        from sprites import load_damage_animations
+        pygame.init()
+        anims = load_damage_animations()
+        for d in ("right", "left", "up", "down"):
+            self.assertEqual(len(anims[f"hurt_{d}"]), 6)
+            self.assertEqual(len(anims[f"hurt_light_{d}"]), 4)
+        self.assertEqual(anims["hurt_down"][-1].get_height(), S.PLAYER_SPRITE_HEIGHT)
+
+
 if __name__ == "__main__":
     unittest.main()

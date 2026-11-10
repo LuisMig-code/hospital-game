@@ -102,11 +102,13 @@ def _fill_nubs(dungeon):
                     changed = True
 
 
-def try_toggle(dungeon, player):
+def try_toggle(dungeon, player, zombies=()):
     """Abre/fecha a porta à frente do personagem (ou onde ele está).
 
+    zombies: tiles ocupados por zumbis (também impedem fechar a porta).
     Retorna (resultado, porta): resultado é "abriu", "fechou", "bloqueada"
-    (não dá para fechar com o personagem na porta) ou None (nenhuma porta).
+    (não dá para fechar com o personagem na porta), "zumbi" (há um zumbi
+    na porta) ou None (nenhuma porta).
     """
     dx, dy = DIRS[player.facing]
     front = (player.tile[0] + dx, player.tile[1] + dy)
@@ -117,6 +119,8 @@ def try_toggle(dungeon, player):
         occupied = {player.tile, player.target}
         if occupied & set(door.tiles):
             return "bloqueada", door
+        if set(zombies) & set(door.tiles):
+            return "zumbi", door
         door.open = False
         return "fechou", door
     door.open = True

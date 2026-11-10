@@ -1,9 +1,11 @@
-"""Jogador: movimento tile a tile no grid, corrida com estamina, ataque e animação."""
+"""Jogador: movimento tile a tile no grid, corrida com estamina, ataque, vida
+(dano com empurrão, invulnerabilidade, morte) e animação."""
 import math
 
 import pygame
 
 import settings as S
+from sprites import HURT_FALLEN_FRAME
 
 DIRS = {
     "right": (1, 0),
@@ -54,6 +56,85 @@ class Player:
         self.attack_queued = False         # pedido no meio de um passo: começa ao chegar
         self.turn_timer = 0.0              # virou parado: espera isso para começar a andar
         self.hit_done = False              # o golpe deste ataque já acertou?
+        # vida
+        self.hp = S.PLAYER_HP
+        self.hurt = False                  # tocando a animação de dano (sem controle)
+        self.hurt_time = 0.0
+        self.hurt_anim = "hurt_down"
+        self.knock_from = None             # (x, y) de onde começou o empurrão
+        self.invulnerable = 0.0            # segundos sem levar dano (piscando)
+        self.dead = False
+
+    # -------------------------------------------------------------------- vida
+    def pixel_tile(self):
+        """Tile onde o personagem está desenhado agora (muda no meio do passo)."""
+        return (int(self.x // S.TILE), int(self.y // S.TILE))
+
+    def take_hit(self, damage, source, dungeon, blocked=frozenset()):
+        """Golpe de um zumbi no tile `source`. Tira vida, cancela passo e
+        ataque, vira o personagem para o zumbi e o empurra 1 tile para o lado
+        oposto (se der; senão usa o dano curto, sem empurrão).
+        Durante o dano e por PLAYER_INVULN_TIME s depois, não leva outro golpe.
+        Devolve True se o golpe contou."""
+        if self.dead or self.hurt or self.invulnerable > 0:
+            return False
+        self.hp = max(0, self.hp - damage)
+        # parte do tile onde está desenhado (pode estar no meio de um passo)
+        self.tile, self.target = self.pixel_tile(), None
+        self.attacking = self.attack_queued = False
+        self.running = False
+        self.turn_timer = 0.0
+        x, y = self.tile
+        dx = (x > source[0]) - (x < source[0])
+        dy = (y > source[1]) - (y < source[1])
+        if not (dx or dy):                 # zumbi no mesmo tile (não deveria): para trás
+            dx, dy = (-c for c in DIRS[self.facing])
+        self.facing = _facing_for(-dx, -dy)    # olha para o zumbi e recua de costas
+        push = self._choose_step(dx, dy, dungeon, blocked)
+        if push is not None:
+            self.target = (x + push[0], y + push[1])
+            self.knock_from = (self.x, self.y)
+        self.dead = self.hp <= 0
+        light = push is None and not self.dead
+        name = f"hurt_light_{self.facing}" if light else f"hurt_{self.facing}"
+        self.hurt_anim = name if name in self.anims else "idle"
+        self.hurt, self.hurt_time = True, 0.0
+        self.anim, self.frame, self.frame_time = self.hurt_anim, 0, 0.0
+        return True
+
+    def hurt_frames(self):
+        return len(self.anims[self.hurt_anim])
+
+    def _update_hurt(self, dt):
+        """Empurrão (desacelerando) e animação de dano. Morto, fica caído."""
+        self.hurt_time += dt
+        if self.target is not None:
+            p = min(1.0, self.hurt_time / S.KNOCKBACK_TIME)
+            ease = 1 - (1 - p) ** 2
+            (x0, y0), (tx, ty) = self.knock_from, tile_center(self.target)
+            self.x, self.y = x0 + (tx - x0) * ease, y0 + (ty - y0) * ease
+            if p >= 1:
+                self.x, self.y = tx, ty
+                self.tile, self.target = self.target, None
+        frame = int(self.hurt_time * S.HURT_FPS)
+        n = self.hurt_frames()
+        if self.dead:
+            self.frame = min(frame, min(HURT_FALLEN_FRAME, n - 1))
+        elif frame >= n and self.target is None:
+            self.hurt = False
+            self.invulnerable = S.PLAYER_INVULN_TIME
+            self.anim, self.frame_time = self.idle_anim(), 0.0
+            self.frame = 0
+            return
+        else:
+            self.frame = min(frame, n - 1)
+        self.anim = self.hurt_anim
+        self.stamina = min(S.STAMINA_MAX, self.stamina + S.STAMINA_REGEN_IDLE * dt)
+
+    @property
+    def blinking(self):
+        """Invulnerável depois do dano: alterna visível/transparente."""
+        return self.invulnerable > 0 and not self.hurt and int(self.invulnerable * 12) % 2 == 0
 
     # ------------------------------------------------------------------ ataque
     def attack_frames(self):
@@ -149,6 +230,11 @@ class Player:
         Devolve o tile de impacto quando um golpe acerta neste quadro (senão None)."""
         budget = dt
         self.moving = False
+        if self.hurt:                      # levando dano (ou morto): sem controle
+            self.running = False
+            self._update_hurt(dt)
+            return None
+        self.invulnerable = max(0.0, self.invulnerable - dt)
 
         if self.attack_queued and not self.attacking and self.target is None:
             self._start_attack()
@@ -252,4 +338,7 @@ class Player:
         feet = (round(fx - camera[0]), round(fy - camera[1]))
         shadow = self.shadow()
         surf.blit(shadow, shadow.get_rect(center=(feet[0], feet[1] + 1)))
+        if self.blinking:
+            img = img.copy()
+            img.set_alpha(70)
         surf.blit(img, img.get_rect(midbottom=feet))

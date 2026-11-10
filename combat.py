@@ -4,7 +4,8 @@ O golpe acerta o tile à frente do personagem (o impacto) e espalha em volta:
 distância de Chebyshev ao impacto 0 → ATTACK_DAMAGE[0] (11), 1 → [1] (6),
 2 → [2] (4). Para a frente só alcança ATTACK_REACH (2) tiles a partir do
 personagem. O personagem não se acerta. Só leva dano quem o personagem
-está vendo (parede bloqueia o golpe, igual à visão).
+está vendo (parede bloqueia o golpe, igual à visão). Quem sobrevive é
+lançado 1 tile para longe do personagem.
 
 Sem pygame aqui: a parte de desenho dos números fica em main.py.
 """
@@ -31,8 +32,12 @@ def damage_map(impact, player_tile):
     return out
 
 
-def apply_attack(horde, impact, player_tile, visible):
-    """Aplica o golpe nos zumbis. Devolve [(zumbi, dano, morreu)]."""
+def apply_attack(horde, impact, player_tile, visible, dungeon=None, player_occ=()):
+    """Aplica o golpe nos zumbis. Devolve [(zumbi, dano, morreu)].
+
+    Com `dungeon`, quem sobrevive é lançado 1 tile para o lado oposto ao
+    personagem (`Zombie.knock_back`), sem entrar em parede, em outro zumbi
+    nem no personagem (`player_occ`: tiles que ele ocupa)."""
     dmg = damage_map(impact, player_tile)
     hits = []
     for z in horde.zombies:
@@ -42,6 +47,11 @@ def apply_attack(horde, impact, player_tile, visible):
         if tile in dmg and tile in visible:
             died = z.hit(dmg[tile])
             hits.append((z, dmg[tile], died))
+    if dungeon is not None:
+        for z, _, died in hits:
+            if not died:
+                blocked = (horde.blocked_tiles() - z.occupied()) | set(player_occ)
+                z.knock_back(player_tile, dungeon, blocked)
     return hits
 
 

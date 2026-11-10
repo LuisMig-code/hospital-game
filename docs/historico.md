@@ -2,6 +2,16 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-10 — Zumbi lançado pelo golpe
+- Zumbi que sobrevive ao golpe do personagem é **lançado 1 tile para o lado oposto** a ele (8 direções, 0,15 s); parede, porta fechada ou outro zumbi atrás seguram. Cancela o passo e o preparo do golpe do zumbi.
+
+## 2026-11-10 — Vida, zumbis atacando e game over
+- Personagem com **10 de vida** (barra Vida no HUD).
+- Zumbis a até **3 tiles** perseguem o personagem (busca de caminho curta, 8 direções, podem sair da sala por portas abertas; porta fechada segura) e, colados nele, preparam e dão um golpe de **2 de dano** (intervalo de 1 s). Longe, voltam a vagar onde estão.
+- Ao levar golpe: animação de dano de `damage.png` (agora recortado), **empurrão de 1 tile** para o lado oposto ao zumbi (sem empurrão contra parede/zumbi: dano curto), sem controle durante o dano e **1 s invulnerável piscando**; número `-2` e moldura vermelha na tela.
+- Vida 0: o personagem cai, **GAME OVER** e a mesma dungeon recomeça depois de 3 s.
+- Espaço não fecha porta com zumbi dentro.
+
 ## 2026-11-10 — Zumbis na diagonal
 - Zumbis passam a sortear entre 8 direções (retas e diagonais) ao vagar, com a mesma regra de não cortar quina e a mesma velocidade em px/s; na diagonal usam o sprite horizontal.
 
