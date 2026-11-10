@@ -43,12 +43,17 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 ## Movimento (`player.py`)
 
 - O personagem anda **um tile por vez** e nunca para entre dois tiles.
-- Parado, lê uma direção (sem diagonal; a horizontal tem prioridade).
-  - Se é **outra direção**, primeiro só **vira** para ela. Segurando a tecla, começa a andar depois de `TURN_DELAY` (0,12 s); um toque rápido só vira.
-  - Se já está virado para lá, anda na hora: se o tile vizinho é chão, define esse tile como alvo.
-  - Andando sem parar (ao chegar num tile com a tecla apertada), trocar de direção é imediato, sem pausa.
-- Em movimento, avança `velocidade × dt` até o centro do alvo. Ao chegar, encaixa exatamente no tile e, se a tecla continua pressionada, já começa o próximo passo no mesmo frame, usando o tempo que sobrou. Por isso segurar a tecla dá um movimento contínuo e suave.
-- Colisão: só "o tile de destino é chão?" (`dungeon.is_walkable`).
+- As teclas viram um vetor `(dx, dy)` (`_read_move`): **duas teclas juntas andam na diagonal** (W+A, W+D, S+A, S+D); teclas opostas (A+D, W+S) se anulam.
+- Parado:
+  - Se é **outra direção**, primeiro só **vira** para ela. Segurando a tecla, começa a andar depois de `TURN_DELAY` (0,12 s); um toque rápido só vira. Na diagonal, se ele já olha para um dos dois lados (ex.: olhando para cima e aperta W+A), anda na hora.
+  - Se já está virado para lá, anda na hora.
+  - Andando sem parar (ao chegar num tile com a tecla apertada), trocar de direção — inclusive reta ↔ diagonal — é imediato, sem pausa.
+- Escolha do passo (`_choose_step`), na ordem: a **diagonal**, só o eixo horizontal, só o vertical. Assim, com W+A encostado numa parede à esquerda ele **desliza** para cima.
+  - A diagonal **não corta quina**: o tile diagonal e os dois tiles retos que ela atravessa têm que ser andáveis (parede ou porta fechada bloqueiam). Por isso não dá para entrar numa porta na diagonal nem passar espremido entre duas paredes.
+  - O tile de destino não pode estar ocupado por zumbi; zumbi num dos tiles retos não impede a diagonal.
+- Sprite: só existem 4 direções; na diagonal usa o sprite **horizontal** (`walk_left`/`walk_right`). `facing` continua sendo uma das 4 direções — o ataque e o Espaço nas portas usam `facing`.
+- Em movimento, avança `velocidade × dt` em linha reta até o centro do alvo (distância euclidiana: a diagonal tem √2 tiles e leva ~1,41× o tempo de um passo reto — mesma velocidade em px/s, sem andar mais rápido na diagonal). Ao chegar, encaixa exatamente no tile e, se a tecla continua pressionada, já começa o próximo passo no mesmo frame, usando o tempo que sobrou. Por isso segurar a tecla dá um movimento contínuo e suave.
+- Colisão: "o tile de destino é chão?" (`dungeon.is_walkable`), mais a regra da quina na diagonal.
 - Velocidade: `PLAYER_SPEED` = 195 px/s (≈ 6 tiles/s); correndo, × `RUN_MULT` (2).
 - Animação: `walk_<direção>` em movimento; a animação roda 2x mais rápido na corrida.
 - Parado, continua **olhando para onde estava indo**: de frente usa a animação `idle`; para a direita, esquerda e costas usa a pose parada `idle_<direção>` (o 1º quadro da caminhada, com os pés juntos).
@@ -125,11 +130,12 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 | `underground` | Enterrado e invisível, esperando ser visto. | não |
 | `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (8 quadros, 1 s). | sim |
 | `idle` | Pausa entre caminhadas (`ZOMBIE_IDLE_TIME`, hoje **0**: emenda direto na próxima caminhada). Cercado, sem direção livre, espera 0,1–0,3 s e tenta de novo. | sim |
-| `walk` | Sorteia uma direção livre e anda 1–4 tiles (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`). Depois volta a `idle`. | sim |
+| `walk` | Sorteia uma das **8 direções** livres (retas ou diagonais) e anda 1–4 tiles nela (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`) — na diagonal, mesma velocidade em px/s. Depois volta a `idle`. | sim |
 | `dying` | Vida chegou a 0: toca a animação de surgir **ao contrário** (afunda de volta no chão, `ZOMBIE_DEATH_FPS`). Não leva mais dano. | não |
 | `dead` | Terminou de afundar: sai do jogo e conta em "Abatidos". | — |
 
 - O zumbi só anda para tiles **dentro da própria sala**, que sejam chão e estejam livres (sem o personagem nem outro zumbi — vale o tile atual e o de destino). Se não houver direção livre, espera um pouco e tenta de novo.
+- Na diagonal, como o personagem, **não corta quina**: os dois tiles retos atravessados também têm que ser chão da sala. Usa o sprite horizontal (`walk_left`/`walk_right`).
 - O personagem não entra em tile de zumbi fora do chão (`Player.update(..., blocked=...)`); zumbi enterrado não bloqueia.
 - Têm **10 de vida** (`ZOMBIE_HP`) e levam dano do personagem (veja "Combate"). Ainda não atacam nem perseguem: só vagam.
 

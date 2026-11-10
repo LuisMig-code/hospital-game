@@ -2,6 +2,14 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-10 — Zumbis na diagonal
+- Zumbis passam a sortear entre 8 direções (retas e diagonais) ao vagar, com a mesma regra de não cortar quina e a mesma velocidade em px/s; na diagonal usam o sprite horizontal.
+
+## 2026-11-10 — Movimento na diagonal
+- Duas teclas juntas (W+A, W+D, S+A, S+D) andam na diagonal, tile a tile, na mesma velocidade em px/s.
+- A diagonal não corta quina; bloqueada, o personagem desliza pelo eixo livre (ex.: W+A rente a uma parede à esquerda → sobe).
+- Na diagonal usa o sprite horizontal; ataque e portas continuam nas 4 direções.
+
 ## 2026-11-10 — Zumbis sem pausa
 - `ZOMBIE_IDLE_TIME` zerado: os zumbis emendam uma caminhada na outra. Cercados, tentam de novo a cada 0,1–0,3 s.
 

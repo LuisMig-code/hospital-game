@@ -30,6 +30,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Correndo, percorre 2x a distância de andando.
 - Estamina: gasta 25/s correndo, zera e deixa o personagem cansado (não corre até recuperar 20), recupera 10/s andando e 20/s parado, e não passa de 100.
 
+- Diagonal: W+A/W+D/S+A/S+D andam na diagonal e terminam no centro do tile, com sprite horizontal; mesma velocidade em px/s; desliza na parede; não corta quina (parede no tile reto ou no diagonal); zumbi no destino bloqueia, nos retos não; teclas opostas se anulam; regra de virar; numa dungeon real nunca entra em parede nem corta quina.
 - Virar antes de andar: toque rápido em outra direção só vira; segurando, anda após `TURN_DELAY`; na mesma direção anda na hora; trocando de direção andando, segue sem pausa.
 - Ataque: o golpe acerta **uma vez**, no quadro 5, no tile à frente; durante o ataque não anda nem vira; pedido no meio de um passo começa ao chegar no tile; pedidos durante o ataque não empilham.
 
@@ -66,6 +67,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Em 60 seeds: cada sala com espaço tem de 3 a 5 zumbis, em tiles distintos de chão dentro da sala, todos enterrados e a mais de 2 tiles do spawn; a mesma seed gera os mesmos zumbis.
 - Ficam enterrados enquanto não são vistos; ao entrar na visão, saem do chão e depois começam a andar; zumbis de outras salas continuam enterrados.
 - Simulando 60 s: nunca saem da sala, dois zumbis nunca ocupam o mesmo tile, nenhum entra no tile do personagem, e se movem (mais da metade sai do tile inicial).
+- Também andam na diagonal, sempre para um tile vizinho, sem cortar quina, com sprite horizontal e a mesma velocidade em px/s.
 - Sem pausa entre caminhadas: andam mais de 90% do tempo; parada mais longa só quando cercados (≤ 0,3 s).
 - Zumbi enterrado não bloqueia o personagem; fora do chão, bloqueia. Não acorda com o personagem em cima.
 - Sprite: quantidade de quadros por animação, tamanho 64×64, nenhum pixel magenta/roxo sobrando.

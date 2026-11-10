@@ -1,11 +1,13 @@
 """Zumbis: nascem enterrados nas salas, saem do chão quando o jogador os vê
-e depois ficam vagando pela sala (andam alguns tiles, param um pouco...).
+e depois ficam vagando pela sala (andam alguns tiles numa das 8 direções,
+retas ou diagonais, param um pouco...).
 Têm vida: levam dano dos golpes do personagem e, ao morrer, afundam de
 volta no chão (a animação de surgir ao contrário).
 
 A lógica não desenha nada e não precisa de janela; só `Zombie.draw` usa as
 superfícies das animações.
 """
+import math
 import random
 
 import pygame
@@ -15,6 +17,15 @@ from player import Player, tile_center
 from sprites import ZOMBIE_ROWS
 
 DIRS = {"right": (1, 0), "left": (-1, 0), "up": (0, -1), "down": (0, 1)}
+# 8 direções de caminhada (retas e diagonais)
+MOVES = [(1, 0), (-1, 0), (0, -1), (0, 1), (1, -1), (1, 1), (-1, 1), (-1, -1)]
+
+
+def facing_for(dx, dy):
+    """Sprite para um movimento (só há 4 direções; na diagonal vale a horizontal)."""
+    if dx:
+        return "right" if dx > 0 else "left"
+    return "down" if dy > 0 else "up"
 FRAMES = {name: count for _, name, count in ZOMBIE_ROWS}
 
 UNDERGROUND, EMERGING, IDLE, WALK = "underground", "emerging", "idle", "walk"
@@ -35,6 +46,7 @@ class Zombie:
         self.x, self.y = tile_center(self.tile)
         self.state = UNDERGROUND
         self.facing = "down"
+        self.move = (0, 1)                     # direção da caminhada atual (pode ser diagonal)
         self.timer = 0.0
         self.steps_left = 0
         self.anim = "emerge"
@@ -82,18 +94,31 @@ class Zombie:
     def _can_enter(self, tile, dungeon, blocked):
         return in_room(self.room, tile) and dungeon.is_walkable(*tile) and tile not in blocked
 
+    def _can_step(self, move, dungeon, blocked):
+        """Passo reto ou diagonal. A diagonal não corta quina: os dois tiles
+        retos que ela atravessa também têm que ser chão da sala."""
+        dx, dy = move
+        x, y = self.tile
+        if not self._can_enter((x + dx, y + dy), dungeon, blocked):
+            return False
+        if dx and dy:
+            for t in ((x + dx, y), (x, y + dy)):
+                if not (in_room(self.room, t) and dungeon.is_walkable(*t)):
+                    return False
+        return True
+
     def _go_idle(self, rng):
         self.state = IDLE
         self.target = None
         self.timer = rng.uniform(*S.ZOMBIE_IDLE_TIME)
 
     def _start_walk(self, dungeon, blocked, rng):
-        dirs = list(DIRS)
-        rng.shuffle(dirs)
-        for d in dirs:
-            dx, dy = DIRS[d]
-            if self._can_enter((self.tile[0] + dx, self.tile[1] + dy), dungeon, blocked):
-                self.facing = d
+        moves = list(MOVES)
+        rng.shuffle(moves)
+        for move in moves:
+            if self._can_step(move, dungeon, blocked):
+                self.move = move
+                self.facing = facing_for(*move)
                 self.steps_left = rng.randint(*S.ZOMBIE_WANDER_STEPS)
                 self.state = WALK
                 return
@@ -131,23 +156,23 @@ class Zombie:
         elif self.state == WALK:
             self.time_in[WALK] += dt
             if self.target is None:
-                dx, dy = DIRS[self.facing]
-                nxt = (self.tile[0] + dx, self.tile[1] + dy)
-                if self.steps_left > 0 and self._can_enter(nxt, dungeon, blocked):
-                    self.target = nxt
+                dx, dy = self.move
+                if self.steps_left > 0 and self._can_step(self.move, dungeon, blocked):
+                    self.target = (self.tile[0] + dx, self.tile[1] + dy)
                 else:
                     self._go_idle(rng)
             if self.target is not None:
                 tx, ty = tile_center(self.target)
                 step = S.ZOMBIE_SPEED * dt
-                dist = abs(tx - self.x) + abs(ty - self.y)
+                dist = math.hypot(tx - self.x, ty - self.y)   # reto ou diagonal: mesma velocidade
                 if step >= dist:
                     self.x, self.y = tx, ty
                     self.tile, self.target = self.target, None
                     self.steps_left -= 1
                 else:
-                    self.x += step * ((tx > self.x) - (tx < self.x))
-                    self.y += step * ((ty > self.y) - (ty < self.y))
+                    k = step / dist
+                    self.x += (tx - self.x) * k
+                    self.y += (ty - self.y) * k
         self._animate(dt)
 
     def _animate(self, dt):

@@ -1,4 +1,6 @@
 """Jogador: movimento tile a tile no grid, corrida com estamina, ataque e animação."""
+import math
+
 import pygame
 
 import settings as S
@@ -11,17 +13,21 @@ DIRS = {
 }
 
 
-def _read_direction(keys):
-    """Uma direção por vez (sem diagonal); horizontal tem prioridade."""
-    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        return "right"
-    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        return "left"
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        return "up"
-    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        return "down"
-    return None
+def _read_move(keys):
+    """Vetor (dx, dy) das teclas apertadas, com diagonal (ex.: W+A = (-1, -1)).
+    Teclas opostas se anulam. None se nenhuma direção."""
+    dx = (bool(keys[pygame.K_d] or keys[pygame.K_RIGHT])
+          - bool(keys[pygame.K_a] or keys[pygame.K_LEFT]))
+    dy = (bool(keys[pygame.K_s] or keys[pygame.K_DOWN])
+          - bool(keys[pygame.K_w] or keys[pygame.K_UP]))
+    return (dx, dy) if (dx or dy) else None
+
+
+def _facing_for(dx, dy):
+    """Sprite para um movimento: só há 4 direções; na diagonal vale a horizontal."""
+    if dx:
+        return "right" if dx > 0 else "left"
+    return "down" if dy > 0 else "up"
 
 
 def tile_center(tile):
@@ -87,25 +93,48 @@ class Player:
         """Se uma direção está pressionada, vira para ela e, se o tile vizinho
         é chão, começa a andar até ele.
 
-        Parado, apertar uma direção diferente da atual primeiro só **vira**;
+        Duas teclas (ex.: W+A) andam na diagonal; se a diagonal está
+        bloqueada, desliza pelo eixo livre (veja `_choose_step`).
+
+        Parado, apertar uma direção diferente da atual primeiro só **vira**
+        (na diagonal: se já olha para um dos dois lados, não precisa virar);
         segurando a tecla, anda depois de TURN_DELAY s. Já andando
         (chained=True, ao chegar num tile com a tecla apertada) troca de
         direção e segue direto, sem pausa."""
-        d = _read_direction(keys)
-        if d is None:
+        move = _read_move(keys)
+        if move is None:
             self.turn_timer = 0.0
             return
-        if d != self.facing and not chained:
-            self.facing = d
+        dx, dy = move
+        want = _facing_for(dx, dy)
+        parts = {_facing_for(dx, 0) if dx else None, _facing_for(0, dy) if dy else None} - {None}
+        if self.facing not in parts and not chained:
+            self.facing = want
             self.turn_timer = S.TURN_DELAY
             return
         if self.turn_timer > 0:            # acabou de virar: espera para andar
             return
-        self.facing = d
-        dx, dy = DIRS[d]
-        nxt = (self.tile[0] + dx, self.tile[1] + dy)
-        if dungeon.is_walkable(*nxt) and nxt not in blocked:
-            self.target = nxt
+        step = self._choose_step(dx, dy, dungeon, blocked)
+        if step is None:                   # nada livre: só fica virado para lá
+            self.facing = want
+            return
+        self.facing = _facing_for(*step)
+        self.target = (self.tile[0] + step[0], self.tile[1] + step[1])
+
+    def _choose_step(self, dx, dy, dungeon, blocked):
+        """Primeiro passo possível entre: a diagonal, só o eixo horizontal e
+        só o vertical (deslizar na parede). A diagonal não corta quina: os
+        dois tiles retos que ela atravessa também têm que ser andáveis."""
+        x, y = self.tile
+        cands = ([(dx, dy)] if dx and dy else []) + ([(dx, 0)] if dx else []) + ([(0, dy)] if dy else [])
+        for sx, sy in cands:
+            nxt = (x + sx, y + sy)
+            if not dungeon.is_walkable(*nxt) or nxt in blocked:
+                continue
+            if sx and sy and not (dungeon.is_walkable(x + sx, y) and dungeon.is_walkable(x, y + sy)):
+                continue
+            return (sx, sy)
+        return None
 
     def _wants_run(self, keys):
         shift = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
@@ -139,7 +168,7 @@ class Player:
             self.running = self._wants_run(keys)
             speed = S.PLAYER_SPEED * (S.RUN_MULT if self.running else 1.0)
             tx, ty = tile_center(self.target)
-            dist = abs(tx - self.x) + abs(ty - self.y)   # movimento é sempre em 1 eixo
+            dist = math.hypot(tx - self.x, ty - self.y)  # reto ou diagonal: mesma velocidade
             t = min(budget, dist / speed)
             self._spend_stamina(t)
             budget -= t
@@ -150,9 +179,9 @@ class Player:
                     break
                 self._try_start_step(keys, dungeon, blocked, chained=True)
             else:
-                step = speed * t
-                self.x += step * (1 if tx > self.x else -1 if tx < self.x else 0)
-                self.y += step * (1 if ty > self.y else -1 if ty < self.y else 0)
+                k = speed * t / dist
+                self.x += (tx - self.x) * k
+                self.y += (ty - self.y) * k
 
         if self.target is None:
             self.running = False

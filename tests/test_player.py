@@ -91,6 +91,128 @@ class PlayerTests(unittest.TestCase):
         self.assertEqual(p.stamina, S.STAMINA_MAX)         # não passa do máximo
 
 
+class Grid:
+    """Mapa pequeno a partir de strings: '.' chão, '#' parede."""
+    def __init__(self, rows):
+        self.rows = rows
+
+    def is_walkable(self, tx, ty):
+        return 0 <= ty < len(self.rows) and 0 <= tx < len(self.rows[0]) and self.rows[ty][tx] == "."
+
+
+UP_LEFT = Keys({pygame.K_w: True, pygame.K_a: True})
+
+
+class DiagonalTests(unittest.TestCase):
+    def walk_one(self, p, keys, dungeon, blocked=frozenset()):
+        """Anda até chegar no próximo tile e solta."""
+        p.update(DT, keys, dungeon, blocked)
+        for _ in range(200):
+            if p.target is None:
+                break
+            p.update(DT, Keys(), dungeon, blocked)
+        return p.tile
+
+    def test_up_left_moves_diagonally_and_aligns(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "left"
+        p.update(DT, UP_LEFT, OpenField())
+        self.assertEqual(p.target, (4, 4))
+        self.assertEqual(p.facing, "left")                          # sprite horizontal
+        p.update(DT, UP_LEFT, OpenField())
+        self.assertEqual(p.anim, "walk_left")
+        run(p, Keys(), 1.0, OpenField())
+        self.assertEqual(p.tile, (4, 4))
+        self.assertEqual((p.x, p.y), tile_center((4, 4)))
+
+    def test_all_four_diagonals(self):
+        for keys, step in (({pygame.K_w: 1, pygame.K_d: 1}, (1, -1)), ({pygame.K_s: 1, pygame.K_d: 1}, (1, 1)),
+                           ({pygame.K_s: 1, pygame.K_a: 1}, (-1, 1)), ({pygame.K_w: 1, pygame.K_a: 1}, (-1, -1))):
+            p = Player(ANIMS, (5, 5))
+            p.facing = "right" if step[0] > 0 else "left"
+            self.assertEqual(self.walk_one(p, Keys(keys), OpenField()), (5 + step[0], 5 + step[1]))
+
+    def test_same_speed_in_pixels(self):
+        p = Player(ANIMS, (0, 0))
+        p.facing = "left"
+        start = (p.x, p.y)
+        for _ in range(round(1.0 / DT)):
+            p.update(DT, UP_LEFT, OpenField())
+        dist = ((p.x - start[0]) ** 2 + (p.y - start[1]) ** 2) ** 0.5
+        self.assertAlmostEqual(dist, S.PLAYER_SPEED, delta=3)       # não 195·√2
+
+    def test_slides_along_wall(self):
+        g = Grid(["....",
+                  "#...",
+                  "#...",
+                  "#..."])
+        p = Player(ANIMS, (1, 2))
+        p.facing = "left"
+        self.assertEqual(self.walk_one(p, UP_LEFT, g), (1, 1))      # parede à esquerda: sobe
+        self.assertEqual(p.facing, "up")
+
+    def test_does_not_cut_corners(self):
+        # parede só no tile reto de cima: não corta a quina; vai para a esquerda
+        g = Grid(["....",
+                  "..#.",
+                  "....",
+                  "...."])
+        p = Player(ANIMS, (2, 2))
+        p.facing = "left"
+        self.assertEqual(self.walk_one(p, UP_LEFT, g), (1, 2))
+        # parede só no tile diagonal: também não vai na diagonal
+        g = Grid(["....",
+                  ".#..",
+                  "....",
+                  "...."])
+        p = Player(ANIMS, (2, 2))
+        p.facing = "left"
+        self.assertEqual(self.walk_one(p, UP_LEFT, g), (1, 2))      # desliza: horizontal primeiro
+
+    def test_zombies(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "left"
+        self.assertEqual(self.walk_one(p, UP_LEFT, OpenField(), blocked={(4, 4)}), (4, 5))   # diagonal ocupada
+        p = Player(ANIMS, (5, 5))
+        p.facing = "left"
+        self.assertEqual(self.walk_one(p, UP_LEFT, OpenField(), blocked={(4, 5), (5, 4)}), (4, 4))
+
+    def test_opposite_keys_cancel(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "up"
+        p.update(DT, Keys({pygame.K_a: True, pygame.K_d: True, pygame.K_w: True}), OpenField())
+        self.assertEqual(p.target, (5, 4))
+        p = Player(ANIMS, (5, 5))
+        p.update(DT, Keys({pygame.K_a: True, pygame.K_d: True}), OpenField())
+        self.assertIsNone(p.target)
+
+    def test_turn_rule(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "up"                                             # já olha para um dos lados
+        p.update(DT, UP_LEFT, OpenField())
+        self.assertEqual(p.target, (4, 4))
+        p = Player(ANIMS, (5, 5))                                   # olhando para baixo
+        p.update(DT, UP_LEFT, OpenField())
+        self.assertEqual((p.target, p.facing), (None, "left"))     # primeiro só vira
+
+    def test_never_enters_wall_with_diagonals(self):
+        d = generate(7)
+        p = Player(ANIMS, d.spawn)
+        combos = [{pygame.K_d: 1, pygame.K_s: 1}, {pygame.K_d: 1, pygame.K_w: 1},
+                  {pygame.K_a: 1, pygame.K_s: 1}, {pygame.K_a: 1, pygame.K_w: 1}, {pygame.K_s: 1}]
+        for keys in combos * 3:
+            for _ in range(53):
+                p.update(DT, Keys(keys), d)
+                self.assertTrue(d.is_walkable(*p.tile))
+                if p.target:
+                    self.assertTrue(d.is_walkable(*p.target))
+                    tx, ty = p.target
+                    if tx != p.tile[0] and ty != p.tile[1]:          # diagonal: sem cortar quina
+                        self.assertTrue(d.is_walkable(tx, p.tile[1]) and d.is_walkable(p.tile[0], ty))
+            run(p, Keys(), 0.6, d)
+            self.assertEqual((p.x, p.y), tile_center(p.tile))
+
+
 class TurnTests(unittest.TestCase):
     def test_tap_only_turns(self):
         p = Player(ANIMS, (5, 5))                                   # começa olhando para baixo

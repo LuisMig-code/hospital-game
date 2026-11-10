@@ -66,6 +66,8 @@ class BehaviourTests(unittest.TestCase):
         self.room_tiles = {(x, y) for y in range(room.y, room.y + room.h)
                            for x in range(room.x, room.x + room.w)}
 
+    diagonal_steps = 0
+
     def run_for(self, seconds, visible):
         for _ in range(round(seconds / DT)):
             self.horde.update(DT, self.player, visible)
@@ -79,6 +81,12 @@ class BehaviourTests(unittest.TestCase):
             if z.target:
                 self.assertTrue(in_room(z.room, z.target))
                 self.assertTrue(self.d.is_walkable(*z.target))
+                (x, y), (tx, ty) = z.tile, z.target
+                self.assertLessEqual(max(abs(tx - x), abs(ty - y)), 1)       # vizinho (reto ou diagonal)
+                if tx != x and ty != y:                                     # diagonal: sem cortar quina
+                    for t in ((tx, y), (x, ty)):
+                        self.assertTrue(in_room(z.room, t) and self.d.is_walkable(*t))
+                    self.diagonal_steps += 1
             for t in z.occupied():
                 self.assertNotIn(t, occ, "dois zumbis no mesmo tile")
                 self.assertNotIn(t, p_occ, "zumbi no tile do personagem")
@@ -118,6 +126,25 @@ class BehaviourTests(unittest.TestCase):
         moved = sum(1 for z in self.zs if z.tile != start[id(z)])
         self.assertGreaterEqual(moved, len(self.zs) // 2)
 
+    def test_walk_diagonally_too(self):
+        self.run_for(30, visible=self.room_tiles)
+        self.assertGreater(self.diagonal_steps, 0)                  # também andam na diagonal
+        for z in self.zs:
+            if z.state == WALK and z.move[0] and z.move[1]:
+                self.assertEqual(z.facing, "right" if z.move[0] > 0 else "left")   # sprite horizontal
+
+    def test_diagonal_same_pixel_speed(self):
+        z = self.zs[0]
+        z.wake()
+        z.state, z.move, z.steps_left = WALK, (1, 1), 1
+        z.tile = (5, 5)
+        z.x, z.y = 5 * S.TILE + 16, 5 * S.TILE + 16
+        z.target = (6, 6)
+        x0, y0 = z.x, z.y
+        z.update(0.1, OpenRoomDungeon(), set(), self.horde.rng)
+        moved = ((z.x - x0) ** 2 + (z.y - y0) ** 2) ** 0.5
+        self.assertAlmostEqual(moved, S.ZOMBIE_SPEED * 0.1, delta=0.01)
+
     def test_player_blocked_by_active_zombie_not_buried(self):
         z = self.zs[0]
         x, y = z.tile
@@ -140,6 +167,11 @@ class BehaviourTests(unittest.TestCase):
         self.player = Player(ANIMS, z.tile)
         self.horde.update(DT, self.player, {z.tile})
         self.assertEqual(z.state, UNDERGROUND)
+
+
+class OpenRoomDungeon:
+    def is_walkable(self, tx, ty):
+        return True
 
 
 def load_frames(name):
