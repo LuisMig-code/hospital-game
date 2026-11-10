@@ -6,6 +6,8 @@ ASSETS = ROOT / "assets"
 CHARACTER_SHEET = ASSETS / "personagem" / "Chibi Character Animation Sprite Sheet.png"
 TILESET = ASSETS / "background" / "hospital-tiles.png"
 ZOMBIE_SHEET = ASSETS / "monster" / "zombie_spritesheet_32x32.png"
+ATTACK_SHEET = ASSETS / "personagem" / "atack_spritsheet.png"
+DAMAGE_SHEET = ASSETS / "personagem" / "damage.png"   # ainda sem uso (zumbis ainda não atacam)
 
 # Tela / grid
 TILE = 32
@@ -71,3 +73,13 @@ ZOMBIE_IDLE_TIME = (1.0, 4.0)   # segundos parado entre caminhadas
 ZOMBIE_WANDER_STEPS = (1, 4)    # tiles andados em cada caminhada
 ZOMBIE_ANIM_FPS = 6             # animação parado/andando
 ZOMBIE_EMERGE_FPS = 8           # animação saindo do chão (8 quadros = 1 s)
+
+# Combate
+ATTACK_FPS = 22                 # 9 quadros de ataque ≈ 0,4 s
+ATTACK_HIT_FRAME = 5            # quadro em que o golpe acerta (começo do rastro)
+ATTACK_DAMAGE = (11, 6, 4)      # dano no impacto, colado no impacto, a 2 tiles do impacto
+ZOMBIE_HP = 10                  # vida de cada zumbi
+ZOMBIE_DEATH_FPS = 14           # zumbi afundando no chão ao morrer (surgir ao contrário)
+HIT_FLASH_TIME = 0.12           # segundos piscando ao levar dano
+HP_BAR_TIME = 2.0               # segundos mostrando a barra de vida depois de um golpe
+DAMAGE_TEXT_TIME = 0.7          # segundos do número de dano flutuando

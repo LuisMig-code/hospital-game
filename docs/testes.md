@@ -30,6 +30,16 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Correndo, percorre 2x a distância de andando.
 - Estamina: gasta 25/s correndo, zera e deixa o personagem cansado (não corre até recuperar 20), recupera 10/s andando e 20/s parado, e não passa de 100.
 
+- Ataque: o golpe acerta **uma vez**, no quadro 5, no tile à frente; durante o ataque não anda nem vira; pedido no meio de um passo começa ao chegar no tile; pedidos durante o ataque não empilham.
+
+### `tests/test_combat.py`
+- Área do golpe nas 4 direções: impacto 11, 7 tiles com 6 (os 8 vizinhos do impacto menos o personagem), 16 com 4, nada além.
+- Dano por distância: no impacto morre, colado fica com 4, a 2 fica com 6; 6 + 4 mata.
+- Não levam dano: enterrado, fora da visão, morrendo.
+- Morrendo: para de bloquear, afunda (quadros de 7 a 0), sai da horda e conta como abatido.
+- Piscar e barra de vida ligam no golpe e somem depois; números de dano sobem e somem.
+- Sprite de ataque: 9 quadros por direção, altura igual à do `idle`, `attack_left` é o espelho de `attack_right`, sem contorno magenta.
+
 ### `tests/test_fov.py`
 - A origem é sempre visível; nada fora do raio é visível.
 - Em sala aberta, o círculo inteiro é visível.
@@ -73,4 +83,4 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 venv\Scripts\python.exe main.py 42
 ```
 
-Confira: zumbis saindo do chão ao entrar numa sala e vagando sem atravessar o personagem, nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom suave pela roda do mouse (1x a 2x), R/G/V.
+Confira: atacar com clique/J nas 4 direções (zumbis piscando, números de dano, barra de vida, zumbi afundando ao morrer, contador de abatidos), zumbis saindo do chão ao entrar numa sala e vagando sem atravessar o personagem, nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom suave pela roda do mouse (1x a 2x), R/G/V.

@@ -88,5 +88,64 @@ class PlayerTests(unittest.TestCase):
         self.assertEqual(p.stamina, S.STAMINA_MAX)         # não passa do máximo
 
 
+class AttackTests(unittest.TestCase):
+    ATTACK_TIME = 9 / S.ATTACK_FPS
+
+    def test_hit_once_at_hit_frame_with_front_tile(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "up"
+        p.request_attack()
+        hits = []
+        t = 0.0
+        for _ in range(round((self.ATTACK_TIME + 0.2) / DT)):
+            hit = p.update(DT, Keys(), OpenField())
+            t += DT
+            if hit is not None:
+                hits.append((round(t, 3), hit))
+        self.assertEqual(len(hits), 1)                              # uma vez só
+        self.assertEqual(hits[0][1], (5, 4))                        # tile à frente
+        hit_time = hits[0][0]
+        self.assertGreaterEqual(hit_time, S.ATTACK_HIT_FRAME / S.ATTACK_FPS)
+        self.assertLess(hit_time, (S.ATTACK_HIT_FRAME + 1) / S.ATTACK_FPS + DT)
+        self.assertFalse(p.attacking)
+
+    def test_attack_locks_movement_and_facing(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "right"
+        p.request_attack()
+        keys = Keys({pygame.K_s: True})                             # tenta andar para baixo
+        for _ in range(round(self.ATTACK_TIME * 0.8 / DT)):
+            p.update(DT, keys, OpenField())
+            self.assertEqual((p.tile, p.target, p.facing), ((5, 5), None, "right"))
+            self.assertEqual(p.anim, "attack_right")
+        run(p, keys, self.ATTACK_TIME, OpenField())                 # acabou: volta a andar
+        self.assertNotEqual(p.tile, (5, 5))
+
+    def test_attack_requested_mid_step_starts_on_arrival(self):
+        p = Player(ANIMS, (5, 5))
+        keys = Keys({pygame.K_d: True})
+        p.update(DT, keys, OpenField())                             # começa a andar
+        self.assertEqual(p.target, (6, 5))
+        p.request_attack()
+        hit = None
+        for _ in range(round(1.0 / DT)):                            # segurando a tecla
+            hit = p.update(DT, keys, OpenField()) or hit
+            if p.attacking or hit:
+                break
+        self.assertEqual(p.tile, (6, 5))                            # parou no tile seguinte
+        self.assertIsNone(p.target)
+        self.assertTrue(p.attacking)
+
+    def test_no_stacking(self):
+        p = Player(ANIMS, (5, 5))
+        p.request_attack()
+        p.update(DT, Keys(), OpenField())
+        for _ in range(5):
+            p.request_attack()                                      # ignorados durante o ataque
+        hits = [h for _ in range(round(3 * self.ATTACK_TIME / DT))
+                if (h := p.update(DT, Keys(), OpenField())) is not None]
+        self.assertEqual(len(hits), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

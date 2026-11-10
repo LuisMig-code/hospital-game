@@ -6,7 +6,7 @@ canal alpha em vez de divisão fixa.
 """
 import pygame
 
-from settings import CHARACTER_SHEET, PLAYER_SPRITE_HEIGHT, ZOMBIE_SHEET, ZOMBIE_SIZE
+from settings import ATTACK_SHEET, CHARACTER_SHEET, PLAYER_SPRITE_HEIGHT, ZOMBIE_SHEET, ZOMBIE_SIZE
 
 # Ordem das linhas no sheet
 ROW_NAMES = ["idle", "walk_right", "walk_left", "walk_up", "walk_down"]
@@ -208,3 +208,127 @@ def load_zombie_animations(size=ZOMBIE_SIZE, raw=False):
             frames.append(img)
         anims[name] = frames
     return anims
+
+
+# -------------------------------------------------------------------- ataque
+# Sheet de ataque: 5 linhas x 9 quadros, ~159 px de passo. Linha -> animação.
+# A linha 0 repete a 4 (de frente). A linha 3 (esquerda) tem o rastro do golpe
+# indo para a direita, então "attack_left" é a linha 1 (direita) espelhada.
+ATTACK_ROWS = {1: "attack_right", 2: "attack_up", 4: "attack_down"}
+ATTACK_SHEET_ROWS = 5
+ATTACK_FRAMES = 9
+ATTACK_NARROW = 115   # quadros sem rastro do golpe têm menos que isso de largura
+
+
+def is_attack_outline(color):
+    """Contorno magenta do sheet de ataque: roxo saturado (verde quase zero).
+    O rastro rosa do golpe tem verde alto e não entra."""
+    lo = min(color.r, color.b)
+    return lo >= 25 and color.g < 0.3 * lo
+
+
+def _clean_attack_outline(img):
+    """Contorno claro vira transparente; o escuro vira traço quase preto."""
+    img = img.copy()
+    w, h = img.get_size()
+    img.lock()
+    for y in range(h):
+        for x in range(w):
+            c = img.get_at((x, y))
+            if c.a and is_attack_outline(c):
+                if max(c.r, c.b) > 90:
+                    img.set_at((x, y), (0, 0, 0, 0))
+                else:
+                    img.set_at((x, y), (22, 16, 20, c.a))
+    img.unlock()
+    return img
+
+
+def _attack_columns(counts):
+    """Fronteiras (x0, x1) dos 9 quadros de uma linha do sheet de ataque.
+
+    Os quadros sem rastro dão os centros (e o passo da grade); entre dois
+    centros vizinhos a fronteira fica no "vale" da projeção alpha — os
+    rastros dos quadros 5-6 encostam no quadro seguinte."""
+    runs = _runs(counts, min_gap=3)
+    narrow = [(a + b) / 2 for a, b in runs if b - a <= ATTACK_NARROW]
+    pitch0 = 159.5
+    c0 = narrow[0]
+    pts = [(round((c - c0) / pitch0), c) for c in narrow]
+    # regressão linear: centro = a + b * índice
+    n = len(pts)
+    mk = sum(k for k, _ in pts) / n
+    mc = sum(c for _, c in pts) / n
+    b = sum((k - mk) * (c - mc) for k, c in pts) / sum((k - mk) ** 2 for k, _ in pts)
+    a = mc - b * mk
+    centers = [a + b * k for k in range(ATTACK_FRAMES)]
+    bounds = [0]
+    for k in range(ATTACK_FRAMES - 1):
+        lo = int(centers[k] + 0.25 * b)
+        hi = int(centers[k + 1] - 0.25 * b)
+        best = min(counts[lo:hi])
+        xs = [x for x in range(lo, hi) if counts[x] == best]
+        bounds.append(xs[len(xs) // 2])
+    bounds.append(len(counts))
+    return list(zip(bounds[:-1], bounds[1:]))
+
+
+def _anchored(img, anchor_x):
+    """Põe margem dos lados para a âncora (x) ficar no centro da imagem."""
+    w, h = img.get_size()
+    half = max(anchor_x, w - anchor_x)
+    out = pygame.Surface((2 * half, h), pygame.SRCALPHA)
+    out.blit(img, (half - anchor_x, 0))
+    return out
+
+
+def load_attack_animations(target_height=PLAYER_SPRITE_HEIGHT, raw=False):
+    # target_height: altura de "attack_down" na tela. O jogo passa a altura
+    # do "idle" (o desenho do sheet de ataque é menor que o do sheet de andar).
+    """{attack_<direção>: [Surface, ...]} do ataque com faca.
+
+    Cada quadro é recortado da base da linha até o topo do desenho e
+    centralizado pelo cabelo (faixa de cima, sem faca nem rastro), para
+    `Player.draw` poder desenhar pelo meio da base, como nas outras animações.
+    """
+    sheet = pygame.image.load(str(ATTACK_SHEET))
+    if pygame.display.get_surface() is not None:
+        sheet = sheet.convert_alpha()
+    w, h = sheet.get_size()
+    mask = pygame.mask.from_surface(sheet, 40)
+    rows = _keep_largest(_runs(_row_counts(mask, 0, 0, w, h)), ATTACK_SHEET_ROWS)
+
+    scale = None if not raw else 1.0
+
+    anims = {}
+    for row, name in ATTACK_ROWS.items():
+        y0, y1 = rows[row]
+        counts = _col_counts(mask, 0, y0, w, y1 - y0)
+        frames = []
+        for x0, x1 in _attack_columns(counts):
+            cell = _clean_attack_outline(sheet.subsurface((x0, y0, x1 - x0, y1 - y0)))
+            bb = _opaque_bbox(cell)
+            # recorte: largura do desenho, do topo do desenho até a base da linha
+            crop = cell.subsurface((bb.x, bb.y, bb.w, cell.get_height() - bb.y))
+            hair = _opaque_bbox(crop.subsurface((0, 0, bb.w, max(1, round(bb.h * 0.22)))))
+            frames.append(_anchored(crop.copy(), round(hair.centerx)))
+        anims[name] = frames
+    if scale is None:   # mesma escala para todas as direções, pela altura de "attack_down"
+        scale = target_height / anims["attack_down"][0].get_height()
+    if scale != 1.0:
+        for name, frames in anims.items():
+            anims[name] = [pygame.transform.smoothscale(
+                f, (max(1, round(f.get_width() * scale)), max(1, round(f.get_height() * scale))))
+                for f in frames]
+    anims["attack_left"] = [pygame.transform.flip(f, True, False) for f in anims["attack_right"]]
+    return anims
+
+
+def _opaque_bbox(img, threshold=40):
+    """Retângulo dos pixels com alpha >= threshold (lendo linhas/colunas)."""
+    w, h = img.get_size()
+    mask = pygame.mask.from_surface(img, threshold)
+    rects = mask.get_bounding_rects()
+    if not rects:
+        return pygame.Rect(0, 0, w, h)
+    return rects[0].unionall(rects[1:])

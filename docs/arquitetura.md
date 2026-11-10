@@ -9,10 +9,11 @@
 | `dungeon.py` | Gera o grid da dungeon a partir da seed; spawn | `generate`, `Dungeon`, `Room`, `WALL`, `FLOOR`, `normalize_seed` |
 | `doors.py` | Onde ficam as portas e abrir/fechar | `Door`, `place_doors`, `try_toggle` |
 | `player.py` | Movimento tile a tile, corrida, estamina, animação | `Player`, `tile_center` |
-| `zombies.py` | Zumbis: spawn por sala, estados (enterrado, surgindo, parado, andando), colisão | `Zombie`, `Horde`, `spawn_zombies` |
+| `zombies.py` | Zumbis: spawn por sala, estados (enterrado, surgindo, parado, andando, morrendo), colisão, vida | `Zombie`, `Horde`, `spawn_zombies` |
+| `combat.py` | Área de dano do golpe, aplicação nos zumbis, números de dano | `damage_map`, `apply_attack`, `FloatingText`, `texts_for` |
 | `fov.py` | Campo de visão e tiles já explorados | `compute_fov`, `Vision`, `in_radius` |
 | `lighting.py` | Névoa suave (1 pixel por tile, ampliada) e luz com queda/tremulação | `FogLayer`, `Light`, `build_light_mask` |
-| `sprites.py` | Recorta os sprite sheets do personagem e do zumbi | `load_animations`, `slice_sheet`, `load_zombie_animations` |
+| `sprites.py` | Recorta os sprite sheets do personagem (andando e atacando) e do zumbi | `load_animations`, `load_attack_animations`, `load_zombie_animations` |
 | `tileset.py` | Recorta o tileset do hospital e desenha o mapa e as portas | `load_pieces`, `Tileset`, `render_map`, `draw_door` |
 
 Dependências entre módulos (setas = "usa"):
@@ -23,6 +24,7 @@ dungeon ► doors (place_doors, no fim de generate)
 doors ──► dungeon (WALL)
 player ─► settings
 zombies ► player (tile_center, sombra), sprites (ZOMBIE_ROWS), settings
+combat ─► settings (recebe a Horde e os zumbis)
 fov ────► (só recebe o objeto Dungeon)
 lighting ► settings
 tileset ► dungeon (FLOOR), settings
@@ -41,10 +43,11 @@ sprites ► settings
    - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn);
    - cria a `Vision` e a névoa (`FogLayer`, toda preta).
 3. A cada frame (`Game.run`):
-   - eventos de teclado (R, G, V, Espaço, ESC) e da roda do mouse (`MOUSEWHEEL` → `change_zoom`);
+   - eventos de teclado (R, G, V, Espaço, J, ESC) e do mouse (roda → `change_zoom`; clique esquerdo ou J → `player.request_attack()`);
    - Espaço → `toggle_door()`: `try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada (`update_vision(force=True)`);
    - `horde.update(dt, player, vision.visible)` — acorda os zumbis vistos e move os ativos;
-   - `player.update(dt, teclas, dungeon, blocked=horde.blocked_tiles())` — zumbis ativos bloqueiam;
+   - a lógica do quadro fica em `Game.step(dt, teclas)` (os testes a usam sem janela):
+   - `player.update(dt, teclas, dungeon, blocked=horde.blocked_tiles())` — zumbis vivos bloqueiam; no quadro do golpe devolve o tile de impacto → `apply_attack(horde, impacto, tile do personagem, vision.visible)` → números de dano (`texts_for`);
    - `update_vision()` — recalcula a visão se o personagem mudou de tile e atualiza a névoa (`FogLayer.update`);
    - `light.update(dt)` — tremulação da luz;
    - `update_zoom(dt)` — o zoom anda suavemente até o alvo pedido pela roda;
@@ -56,11 +59,12 @@ O mundo é desenhado numa superfície do tamanho da área visível (`view_size()
 
 1. mapa pré-renderizado (piso + sombras das paredes + paredes + portas no estado atual);
 2. grid (só sobre o piso), se ligado;
-3. personagem e zumbis visíveis (`draw_actors`), cada um com sua sombra, **ordenados pela altura dos pés** — quem está mais embaixo na tela fica na frente; com a névoa ligada, só aparecem zumbis em tiles visíveis;
+3. personagem e zumbis visíveis (`draw_actors`, inclusive os que estão morrendo), cada um com sua sombra (zumbis com piscar de dano e barra de vida), **ordenados pela altura dos pés** — quem está mais embaixo na tela fica na frente; com a névoa ligada, só aparecem zumbis em tiles visíveis;
 4. sobreposição: a metade de cima de uma porta da parede de cima, semitransparente, se o personagem está atrás dela (`draw_door_overlap`);
-5. luz em volta do personagem (`Light.draw`) e névoa suave (`FogLayer.render`) — as duas só com a névoa ligada (V).
+5. luz em volta do personagem (`Light.draw`) e névoa suave (`FogLayer.render`) — as duas só com a névoa ligada (V);
+6. números de dano flutuando (por cima da névoa, para ler bem).
 
-O HUD (seed, tile, zoom, estamina, mensagens temporárias) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto, depois da escala, para não mudar de tamanho com o zoom.
+O HUD (seed, tile, zoom, abatidos, estamina, mensagens temporárias; controles num painel no rodapé) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto, depois da escala, para não mudar de tamanho com o zoom.
 
 ## Coordenadas
 

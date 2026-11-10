@@ -89,3 +89,16 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `ZOMBIE_WANDER_STEPS` | (1, 4) | Tiles andados em cada caminhada |
 | `ZOMBIE_ANIM_FPS` | 6 | Quadros por segundo parado/andando |
 | `ZOMBIE_EMERGE_FPS` | 8 | Quadros por segundo saindo do chão (8 quadros = 1 s) |
+
+## Combate
+
+| Constante | Valor | Descrição |
+|---|---|---|
+| `ATTACK_FPS` | 22 | Quadros por segundo do ataque (9 quadros ≈ 0,4 s) |
+| `ATTACK_HIT_FRAME` | 5 | Quadro em que o golpe acerta |
+| `ATTACK_DAMAGE` | (11, 6, 4) | Dano no impacto, colado no impacto e a 2 tiles do impacto |
+| `ZOMBIE_HP` | 10 | Vida de cada zumbi |
+| `ZOMBIE_DEATH_FPS` | 14 | Velocidade do zumbi afundando no chão ao morrer |
+| `HIT_FLASH_TIME` | 0.12 | Segundos piscando ao levar dano |
+| `HP_BAR_TIME` | 2.0 | Segundos mostrando a barra de vida depois de um golpe |
+| `DAMAGE_TEXT_TIME` | 0.7 | Segundos do número de dano flutuando |

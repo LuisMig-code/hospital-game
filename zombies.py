@@ -1,10 +1,14 @@
 """Zumbis: nascem enterrados nas salas, saem do chão quando o jogador os vê
 e depois ficam vagando pela sala (andam alguns tiles, param um pouco...).
+Têm vida: levam dano dos golpes do personagem e, ao morrer, afundam de
+volta no chão (a animação de surgir ao contrário).
 
 A lógica não desenha nada e não precisa de janela; só `Zombie.draw` usa as
 superfícies das animações.
 """
 import random
+
+import pygame
 
 import settings as S
 from player import Player, tile_center
@@ -14,6 +18,8 @@ DIRS = {"right": (1, 0), "left": (-1, 0), "up": (0, -1), "down": (0, 1)}
 FRAMES = {name: count for _, name, count in ZOMBIE_ROWS}
 
 UNDERGROUND, EMERGING, IDLE, WALK = "underground", "emerging", "idle", "walk"
+DYING, DEAD = "dying", "dead"
+SOLID_STATES = (EMERGING, IDLE, WALK)      # bloqueiam e podem levar dano
 
 
 def in_room(room, tile):
@@ -35,11 +41,19 @@ class Zombie:
         self.frame = 0
         self.frame_time = 0.0
         self.time_in = {IDLE: 0.0, WALK: 0.0}   # estatística (usada nos testes)
+        self.hp = S.ZOMBIE_HP
+        self.flash = 0.0        # tempo restante piscando (levou dano)
+        self.hp_bar = 0.0       # tempo restante mostrando a barra de vida
 
     @property
     def active(self):
-        """Fora do chão: aparece, bloqueia e se move."""
-        return self.state != UNDERGROUND
+        """Fora do chão e ainda na tela (inclusive morrendo): é desenhado."""
+        return self.state not in (UNDERGROUND, DEAD)
+
+    @property
+    def solid(self):
+        """Ocupa o tile: bloqueia o personagem/outros zumbis e leva dano."""
+        return self.state in SOLID_STATES
 
     def occupied(self):
         """Tiles que o zumbi ocupa (o atual e, andando, o de destino)."""
@@ -48,6 +62,21 @@ class Zombie:
     def wake(self):
         self.state = EMERGING
         self.anim, self.frame, self.frame_time = "emerge", 0, 0.0
+
+    def hit(self, damage):
+        """Leva dano. Devolve True se morreu com este golpe."""
+        if not self.solid:
+            return False
+        self.hp -= damage
+        self.flash = S.HIT_FLASH_TIME
+        self.hp_bar = S.HP_BAR_TIME
+        if self.hp <= 0:
+            self.hp = 0
+            self.state = DYING
+            self.target = None
+            self.anim, self.frame, self.frame_time = "emerge", FRAMES["emerge"] - 1, 0.0
+            return True
+        return False
 
     # ----------------------------------------------------------------- lógica
     def _can_enter(self, tile, dungeon, blocked):
@@ -74,7 +103,18 @@ class Zombie:
 
     def update(self, dt, dungeon, blocked, rng):
         """blocked: tiles ocupados pelo personagem e pelos outros zumbis."""
-        if self.state == UNDERGROUND:
+        if self.state in (UNDERGROUND, DEAD):
+            return
+        self.flash = max(0.0, self.flash - dt)
+        self.hp_bar = max(0.0, self.hp_bar - dt)
+
+        if self.state == DYING:
+            # surgir ao contrário: afunda de volta no chão
+            self.frame_time += dt
+            frame = FRAMES["emerge"] - 1 - int(self.frame_time * S.ZOMBIE_DEATH_FPS)
+            if frame < 0:
+                self.state = DEAD
+            self.frame = max(0, frame)
             return
         if self.state == EMERGING:
             self.frame_time += dt
@@ -133,10 +173,25 @@ class Zombie:
     def draw(self, surf, camera, anims):
         img = anims[self.anim][self.frame]
         feet = (round(self.x - camera[0]), round(self.feet_y() - camera[1]))
-        if self.state != EMERGING or self.frame >= 4:   # buraco no chão não tem sombra
+        sunk = self.state in (EMERGING, DYING) and self.frame < 4
+        if not sunk:   # buraco no chão não tem sombra
             shadow = Player.shadow()
             surf.blit(shadow, shadow.get_rect(center=(feet[0], feet[1] - 3)))
+        if self.flash > 0:   # pisca claro/avermelhado ao levar dano
+            img = img.copy()
+            img.fill((150, 70, 60), special_flags=pygame.BLEND_RGB_ADD)
         surf.blit(img, img.get_rect(midbottom=feet))
+        if self.hp_bar > 0 and self.solid:
+            self.draw_hp_bar(surf, feet)
+
+    def draw_hp_bar(self, surf, feet):
+        """Barrinha de vida acima da cabeça (some HP_BAR_TIME s após o golpe)."""
+        w, h = 26, 4
+        x, y = feet[0] - w // 2, feet[1] - S.ZOMBIE_SIZE + 6
+        pygame.draw.rect(surf, (15, 10, 10), (x - 1, y - 1, w + 2, h + 2))
+        fill = round(w * self.hp / S.ZOMBIE_HP)
+        color = (90, 200, 70) if self.hp > S.ZOMBIE_HP / 2 else (230, 170, 40) if self.hp > S.ZOMBIE_HP / 4 else (220, 50, 40)
+        pygame.draw.rect(surf, color, (x, y, fill, h))
 
 
 def spawn_zombies(dungeon, avoid=(), avoid_radius=2):
@@ -165,6 +220,7 @@ class Horde:
         self.dungeon = dungeon
         self.zombies = spawn_zombies(dungeon, avoid)
         self.rng = random.Random(dungeon.seed ^ 0x5A5A)
+        self.killed = 0
 
     def update(self, dt, player, visible):
         player_occ = {player.tile} if player.target is None else {player.tile, player.target}
@@ -177,17 +233,23 @@ class Horde:
                 continue
             others = set()
             for o in self.zombies:
-                if o is not z and o.active:
+                if o is not z and o.solid:
                     others |= o.occupied()
             z.update(dt, self.dungeon, player_occ | others, self.rng)
+        # quem terminou de afundar sai do jogo
+        dead = [z for z in self.zombies if z.state == DEAD]
+        if dead:
+            self.killed += len(dead)
+            self.zombies = [z for z in self.zombies if z.state != DEAD]
 
     def blocked_tiles(self):
-        """Tiles que o personagem não pode ocupar (zumbis fora do chão)."""
+        """Tiles que o personagem não pode ocupar (zumbis fora do chão e vivos)."""
         tiles = set()
         for z in self.zombies:
-            if z.active:
+            if z.solid:
                 tiles |= z.occupied()
         return tiles
 
     def active(self):
+        """Zumbis que aparecem na tela (inclusive os que estão morrendo)."""
         return [z for z in self.zombies if z.active]

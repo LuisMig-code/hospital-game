@@ -122,12 +122,42 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 | `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (8 quadros, 1 s). | sim |
 | `idle` | Parado por 1–4 s (`ZOMBIE_IDLE_TIME`). | sim |
 | `walk` | Sorteia uma direção livre e anda 1–4 tiles (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`). Depois volta a `idle`. | sim |
+| `dying` | Vida chegou a 0: toca a animação de surgir **ao contrário** (afunda de volta no chão, `ZOMBIE_DEATH_FPS`). Não leva mais dano. | não |
+| `dead` | Terminou de afundar: sai do jogo e conta em "Abatidos". | — |
 
 - O zumbi só anda para tiles **dentro da própria sala**, que sejam chão e estejam livres (sem o personagem nem outro zumbi — vale o tile atual e o de destino). Se não houver direção livre, espera um pouco e tenta de novo.
 - O personagem não entra em tile de zumbi fora do chão (`Player.update(..., blocked=...)`); zumbi enterrado não bloqueia.
-- Ainda não há dano nem perseguição: eles só vagam.
+- Têm **10 de vida** (`ZOMBIE_HP`) e levam dano do personagem (veja "Combate"). Ainda não atacam nem perseguem: só vagam.
 
 ### Desenho
 - Sprite 32×32 escalada 2× (64 px, `ZOMBIE_SIZE`) por vizinho mais próximo: pixel art nítida, mais ou menos da altura do personagem.
 - Mesma sombra elíptica do personagem (menos durante o buraco no chão, nos primeiros quadros do surgimento).
 - Ordenados por profundidade junto com o personagem; com a névoa ligada, só aparecem quando o tile em que estão desenhados está visível.
+- Ao levar dano: **piscam** claro/avermelhado (`HIT_FLASH_TIME`) e mostram uma **barra de vida** acima da cabeça por `HP_BAR_TIME` s (verde → laranja → vermelho).
+
+## Combate (`combat.py`, `player.py`)
+
+### Ataque do personagem
+- **Clique esquerdo** ou **J**: ataca com a faca na direção em que o personagem está virado (`Player.request_attack`).
+- Animação de 9 quadros a `ATTACK_FPS` (≈ 0,4 s). Durante o ataque ele não anda nem vira. Pedido no meio de um passo: o ataque começa assim que ele chega no tile. Pedidos durante um ataque são ignorados (não empilham). Parado atacando recupera estamina como parado.
+- No quadro `ATTACK_HIT_FRAME` (5, quando aparece o rastro do golpe), `Player.update` devolve o **tile de impacto** (o tile à frente) — uma única vez por ataque.
+
+### Dano em área
+O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais) até ele (`ATTACK_DAMAGE = (11, 6, 4)`):
+
+```
+4 4 4 4 4
+4 6 6 6 4
+4 6 11 6 4      (⊙ = personagem olhando para cima)
+4 6 ⊙ 6 4
+4 4 4 4 4
+```
+
+- Impacto: **11** (mata na hora: zumbi tem 10). Colado no impacto: **6**. A 2 tiles do impacto: **4**. O personagem não se acerta.
+- 6 + 4 também mata; quem leva só 6 fica com 4 de vida.
+- Só leva dano o zumbi **vivo e fora do chão** que está num tile **visível** pelo personagem (parede bloqueia o golpe, igual à visão). Vale o tile em que o zumbi está desenhado (no meio de um passo, o mais próximo).
+
+### Feedback
+- **Números de dano** (`FloatingText`) sobem e somem em `DAMAGE_TEXT_TIME` s: vermelho para 11, laranja para 6, claro para 4, com contorno escuro.
+- Contador **Abatidos** no HUD.
+

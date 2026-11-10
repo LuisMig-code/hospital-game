@@ -22,6 +22,33 @@
 3. Escala todas as animações pelo mesmo fator, de modo que a altura fique em `PLAYER_SPRITE_HEIGHT` (48 px = 1,5 tile).
 4. Se a detecção falhar, usa a divisão uniforme como alternativa.
 
+## Personagem atacando — `assets/personagem/atack_spritsheet.png`
+
+- 1536×1024 px, RGBA, **5 linhas × 9 quadros** (passo de ~159 px), com um contorno **magenta** em volta do desenho. O desenho é menor que o do sheet de andar (~148 px × ~191 px de altura).
+- Quadros: 0–4 preparação, **5–6 golpe com rastro** (azul/rosa), 7–8 recuperação.
+
+| Linha | Direção | Uso |
+|---|---|---|
+| 1 | frente | não usada (igual à 5) |
+| 2 | direita | `attack_right` |
+| 3 | costas | `attack_up` |
+| 4 | esquerda | não usada: o rastro do golpe vai para a direita |
+| 5 | frente | `attack_down` |
+
+`attack_left` é a linha 2 **espelhada** (rastro para a esquerda).
+
+**Como o recorte funciona** (`sprites.load_attack_animations`):
+1. Linhas pela projeção alpha (como no sheet de andar).
+2. Colunas: os quadros sem rastro dão os centros e o passo da grade (regressão linear); entre dois centros, a fronteira fica no **vale** da projeção alpha, porque os rastros dos quadros 5–6 encostam no quadro seguinte.
+3. Contorno: pixel roxo saturado (verde < 0,3 × min(vermelho, azul)) claro vira transparente, escuro vira traço quase preto. O rastro rosa tem verde alto e não é afetado.
+4. **Âncora**: o centro do cabelo (faixa de cima, sem faca nem rastro) fica no centro da imagem e a base da linha embaixo → o personagem não "pula" ao começar a atacar (conferido sobrepondo com o `idle`).
+5. Escala para `attack_down` ter a mesma altura do `idle` na tela.
+
+## Personagem levando dano — `assets/personagem/damage.png`
+
+- 1024×1536 px, 8 linhas: as 4 primeiras com 4 quadros (piscar branco, dor, recuperação) e as 4 últimas com 6 (piscar, dor, caindo, ajoelhado, levantando).
+- **Ainda sem uso**: entra quando os zumbis começarem a atacar.
+
 ## Tileset do hospital — `assets/background/hospital-tiles.png`
 
 - 530×471 px, RGBA, fundo transparente. **Não é uma grade uniforme**: são 10 peças soltas de tamanhos diferentes, cada uma com um contorno roxo.
@@ -61,6 +88,7 @@ As duas pastas estão no `.gitignore`, porque o jogo faz os recortes sozinho ao 
 
 ## Adicionando assets novos
 
+- `tools/export_frames.py` também salva os quadros de ataque em `assets/personagem/attack_frames/` (ignorada no git).
 - **Novo sprite sheet com o mesmo layout**: troque `CHARACTER_SHEET` em `settings.py`. Se a ordem das linhas mudar, ajuste `ROW_NAMES` em `sprites.py`.
 - **Novo tileset**: se o número de peças por linha mudar, ajuste `PIECE_ROWS` em `tileset.py`. O teste `test_finds_all_pieces_in_order` avisa se a detecção não bater.
 

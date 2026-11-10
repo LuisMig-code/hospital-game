@@ -4,7 +4,7 @@ Uso:
     venv\\Scripts\\python.exe main.py            # seed aleatória
     venv\\Scripts\\python.exe main.py 12345      # seed específica (número ou texto)
 
-Controles: WASD/setas movem, Shift corre, roda do mouse dá zoom, R gera nova dungeon,
+Controles: WASD/setas movem, Shift corre, clique esquerdo/J ataca, roda do mouse dá zoom, R gera nova dungeon,
 G liga/desliga o grid, V liga/desliga a névoa, Espaço abre/fecha portas, ESC sai.
 """
 import math
@@ -18,7 +18,8 @@ from dungeon import FLOOR, generate
 from fov import Vision
 from lighting import FogLayer, Light
 from player import Player
-from sprites import load_animations, load_zombie_animations
+from combat import apply_attack, texts_for
+from sprites import load_animations, load_attack_animations, load_zombie_animations
 from zombies import Horde
 from doors import try_toggle
 from tileset import Tileset, bake_wall_shadows, door_rect, draw_door, init_doors, render_map
@@ -58,7 +59,12 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("consolas", 18)
         self.anims = load_animations()
+        # ataque: mesma altura do personagem parado (o desenho do sheet é menor)
+        self.anims.update(load_attack_animations(target_height=self.anims["idle"][0].get_height()))
         self.zombie_anims = load_zombie_animations()
+        self.small_font = pygame.font.SysFont("consolas", 15)
+        self.dmg_font = pygame.font.SysFont("consolas", 15, bold=True)
+        self._dmg_cache = {}
         r = S.VISION_RADIUS
         self.light = Light(round(math.sqrt(r * r + r) * S.TILE))   # mesmo raio de fov.in_radius
         try:
@@ -80,6 +86,7 @@ class Game:
         self.player = Player(self.anims, self.dungeon.spawn)
         # Zumbis enterrados nas salas (longe do spawn); saem do chão quando vistos
         self.horde = Horde(self.dungeon, avoid=[self.dungeon.spawn])
+        self.texts = []                    # números de dano flutuando
         self.seed_label = str(seed)
         # Névoa: começa toda preta; tiles descobertos viram "escurecidos"
         self.vision = Vision(self.dungeon, S.VISION_RADIUS)
@@ -149,6 +156,7 @@ class Game:
             self.light.draw(view, center)
             fog, pos = self.fog.render(cam, view.get_size())
             view.blit(fog, pos)
+        self.draw_damage_texts(view, cam)    # por cima da névoa, para ler bem
         size = (S.SCREEN_W, S.SCREEN_H)
         if view.get_size() == size:
             self.screen.blit(view, (0, 0))
@@ -168,6 +176,26 @@ class Game:
             actors.append((z.feet_y(), lambda z=z: z.draw(view, cam, self.zombie_anims)))
         for _, draw in sorted(actors, key=lambda a: a[0]):
             draw()
+
+    def _damage_surface(self, text, color):
+        """Número de dano com contorno escuro (cacheado)."""
+        key = (text, color)
+        if key not in self._dmg_cache:
+            fg = self.dmg_font.render(text, True, color)
+            bg = self.dmg_font.render(text, True, (20, 10, 10))
+            w, h = fg.get_size()
+            surf = pygame.Surface((w + 2, h + 2), pygame.SRCALPHA)
+            for ox, oy in ((0, 1), (2, 1), (1, 0), (1, 2)):
+                surf.blit(bg, (ox, oy))
+            surf.blit(fg, (1, 1))
+            self._dmg_cache[key] = surf
+        return self._dmg_cache[key]
+
+    def draw_damage_texts(self, view, cam):
+        for t in self.texts:
+            img = self._damage_surface(t.text, t.color)
+            img.set_alpha(t.alpha)
+            view.blit(img, img.get_rect(midbottom=(round(t.x - cam[0]), round(t.y - cam[1]))))
 
     def draw_door_overlap(self, view, cam):
         """Profundidade: portas da parede de cima ocupam 2 tiles de altura, e
@@ -196,7 +224,7 @@ class Game:
         p = self.player
         tx, ty = p.tile
         hud = (f"Seed: {self.seed_label}   Tile: ({tx}, {ty})   Zoom: {self.zoom:.1f}x   "
-               "[Shift] correr [Espaço] porta [Roda] zoom [R] nova [G] grid [V] névoa [ESC] sair")
+               f"Abatidos: {self.horde.killed}")
         showing_msg = self.message and pygame.time.get_ticks() < self.message_until
 
         # Painel semitransparente atrás do HUD
@@ -221,6 +249,22 @@ class Game:
         if showing_msg:
             self._text(self.message, (10, 56), (255, 200, 120))
 
+        self.draw_controls()
+
+    CONTROLS = ("[WASD] andar  [Shift] correr  [Clique/J] atacar  [Espaço] porta  "
+                "[Roda] zoom  [R] nova  [G] grid  [V] névoa  [ESC] sair")
+
+    def draw_controls(self):
+        """Ajuda dos controles num painel pequeno no rodapé."""
+        img = self.small_font.render(self.CONTROLS, True, (220, 220, 220))
+        rect = img.get_rect(bottomleft=(10, S.SCREEN_H - 8))
+        if getattr(self, "_controls_panel", None) is None:
+            panel = pygame.Surface((rect.w + 12, rect.h + 8), pygame.SRCALPHA)
+            pygame.draw.rect(panel, (10, 12, 14, S.HUD_PANEL_ALPHA), panel.get_rect(), border_radius=6)
+            self._controls_panel = panel
+        self.screen.blit(self._controls_panel, (rect.x - 6, rect.y - 4))
+        self.screen.blit(img, rect)
+
     def hud_panel(self, rect):
         if getattr(self, "_panel_size", None) != rect.size:
             self._panel = pygame.Surface(rect.size, pygame.SRCALPHA)
@@ -234,6 +278,20 @@ class Game:
     def show_message(self, text, seconds=1.5):
         self.message = text
         self.message_until = pygame.time.get_ticks() + int(seconds * 1000)
+
+    def step(self, dt, keys):
+        """Um quadro da lógica do jogo (sem desenhar)."""
+        self.horde.update(dt, self.player, self.vision.visible)
+        impact = self.player.update(dt, keys, self.dungeon, blocked=self.horde.blocked_tiles())
+        if impact is not None:   # quadro do golpe: dano em área nos zumbis
+            hits = apply_attack(self.horde, impact, self.player.tile, self.vision.visible)
+            self.texts.extend(texts_for(hits))
+        for t in self.texts:
+            t.update(dt)
+        self.texts = [t for t in self.texts if not t.done]
+        self.light.update(dt)
+        self.update_zoom(dt)
+        self.update_vision()
 
     def run(self):
         while True:
@@ -252,14 +310,10 @@ class Game:
                 if e.type == pygame.MOUSEWHEEL:
                     # precise_y: frações de "clique" em touchpads (scroll contínuo)
                     self.change_zoom(getattr(e, "precise_y", e.y))
+                if (e.type == pygame.MOUSEBUTTONDOWN and e.button == 1) or                         (e.type == pygame.KEYDOWN and e.key == pygame.K_j):
+                    self.player.request_attack()
 
-            self.horde.update(dt, self.player, self.vision.visible)
-            self.player.update(dt, pygame.key.get_pressed(), self.dungeon,
-                               blocked=self.horde.blocked_tiles())
-            self.light.update(dt)
-            self.update_zoom(dt)
-            self.update_vision()
-
+            self.step(dt, pygame.key.get_pressed())
             self.draw_world()
             self.draw_hud()
             pygame.display.flip()

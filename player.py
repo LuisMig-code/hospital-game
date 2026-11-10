@@ -1,4 +1,4 @@
-"""Jogador: movimento tile a tile no grid, corrida com estamina e animação."""
+"""Jogador: movimento tile a tile no grid, corrida com estamina, ataque e animação."""
 import pygame
 
 import settings as S
@@ -42,6 +42,44 @@ class Player:
         self.anim = "idle"
         self.frame_time = 0.0
         self.frame = 0
+        # ataque
+        self.attacking = False
+        self.attack_time = 0.0
+        self.attack_queued = False         # pedido no meio de um passo: começa ao chegar
+        self.hit_done = False              # o golpe deste ataque já acertou?
+
+    # ------------------------------------------------------------------ ataque
+    def attack_frames(self):
+        frames = self.anims.get(f"attack_{self.facing}")
+        return len(frames) if frames else 9
+
+    def request_attack(self):
+        """Clique/J: ataca na direção em que está virado. Durante um ataque o
+        pedido é ignorado; no meio de um passo, o ataque começa ao chegar."""
+        if not self.attacking:
+            self.attack_queued = True
+
+    def impact_tile(self):
+        dx, dy = DIRS[self.facing]
+        return (self.tile[0] + dx, self.tile[1] + dy)
+
+    def _start_attack(self):
+        self.attacking, self.attack_queued, self.hit_done = True, False, False
+        self.attack_time = 0.0
+        self.running = False
+
+    def _update_attack(self, dt):
+        """Avança o ataque. Devolve o tile de impacto no quadro do golpe (uma vez)."""
+        self.attack_time += dt
+        frame = int(self.attack_time * S.ATTACK_FPS)
+        hit = None
+        if not self.hit_done and frame >= S.ATTACK_HIT_FRAME:
+            self.hit_done = True
+            hit = self.impact_tile()
+        if frame >= self.attack_frames():
+            self.attacking = False
+        self.stamina = min(S.STAMINA_MAX, self.stamina + S.STAMINA_REGEN_IDLE * dt)  # parado
+        return hit
 
     # ------------------------------------------------------------------ input
     def _try_start_step(self, keys, dungeon, blocked=frozenset()):
@@ -64,9 +102,18 @@ class Player:
 
     # ----------------------------------------------------------------- update
     def update(self, dt, keys, dungeon, blocked=frozenset()):
-        """blocked: tiles ocupados por outros (zumbis) — não dá para entrar."""
+        """blocked: tiles ocupados por outros (zumbis) — não dá para entrar.
+
+        Devolve o tile de impacto quando um golpe acerta neste quadro (senão None)."""
         budget = dt
         self.moving = False
+
+        if self.attack_queued and not self.attacking and self.target is None:
+            self._start_attack()
+        if self.attacking:                 # atacando: não anda nem vira
+            hit = self._update_attack(dt)
+            self._animate(dt)
+            return hit
 
         if self.target is None:
             self._try_start_step(keys, dungeon, blocked)
@@ -85,6 +132,8 @@ class Player:
             if t * speed >= dist - 1e-6:
                 self.x, self.y = tx, ty
                 self.tile, self.target = self.target, None
+                if self.attack_queued:     # chegou no tile: o ataque pedido começa
+                    break
                 self._try_start_step(keys, dungeon, blocked)
             else:
                 step = speed * t
@@ -97,6 +146,7 @@ class Player:
                 self.stamina = min(S.STAMINA_MAX, self.stamina + S.STAMINA_REGEN_IDLE * budget)
 
         self._animate(dt)
+        return None
 
     def _spend_stamina(self, t):
         if self.running:
@@ -107,6 +157,12 @@ class Player:
             self.stamina = min(S.STAMINA_MAX, self.stamina + S.STAMINA_REGEN_WALK * t)
 
     def _animate(self, dt):
+        if self.attacking:
+            self.anim = f"attack_{self.facing}"
+            n = self.attack_frames()
+            self.frame = min(n - 1, int(self.attack_time * S.ATTACK_FPS))
+            self.frame_time = 0.0
+            return
         anim = f"walk_{self.facing}" if self.moving else "idle"
         if anim != self.anim:
             self.anim, self.frame_time = anim, 0.0

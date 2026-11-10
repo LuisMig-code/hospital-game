@@ -45,6 +45,7 @@ def main():
     print(f"Frames salvos em {out}")
     export_tileset()
     export_zombie()
+    export_attack()
 
 
 def export_tileset():
@@ -88,6 +89,28 @@ def export_zombie():
         print(f"zumbi {name:11s} {len(frames)} quadros")
     pygame.image.save(preview, str(out / "preview.png"))
     print(f"Quadros do zumbi salvos em {out}")
+
+
+def export_attack():
+    """Quadros do ataque (escala do jogo e ampliados 3x num preview)."""
+    from sprites import load_animations, load_attack_animations
+
+    out = ASSETS / "personagem" / "attack_frames"
+    out.mkdir(parents=True, exist_ok=True)
+    idle_h = load_animations()["idle"][0].get_height()
+    anims = load_attack_animations(target_height=idle_h)
+    z, cw, ch = 3, 70, 52
+    cols = max(len(f) for f in anims.values())
+    preview = pygame.Surface((cols * cw * z, len(anims) * ch * z))
+    preview.fill((40, 45, 45))
+    for r, (name, frames) in enumerate(anims.items()):
+        for c, img in enumerate(frames):
+            pygame.image.save(img, str(out / f"{name}_{c}.png"))
+            big = pygame.transform.scale_by(img, z)
+            preview.blit(big, big.get_rect(midbottom=(c * cw * z + cw * z // 2, (r + 1) * ch * z - 4)))
+        print(f"ataque {name:13s} {len(frames)} quadros")
+    pygame.image.save(preview, str(out / "preview.png"))
+    print(f"Quadros do ataque salvos em {out}")
 
 
 if __name__ == "__main__":

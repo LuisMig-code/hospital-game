@@ -2,6 +2,14 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-10 — Ataque e combate
+- Sprite de ataque com faca recortada (`atack_spritsheet.png`): 9 quadros por direção, contorno magenta removido, alinhada com o personagem parado; esquerda = direita espelhada.
+- **Clique esquerdo / J** ataca na direção em que o personagem está virado; durante o ataque ele não anda.
+- Dano em área centrado no tile à frente: **11** no impacto, **6** colado nele, **4** a 2 tiles. Só acerta quem o personagem vê.
+- Zumbis com **10 de vida**: piscam e mostram barra de vida ao levar dano; ao morrer afundam no chão (surgir ao contrário) e contam em "Abatidos".
+- Números de dano flutuando; controles num painel no rodapé.
+- `damage.png` adicionado ao projeto, ainda sem uso (zumbis ainda não atacam).
+
 ## 2026-11-09 — Zoom pela roda do mouse
 - Teclas `+`/`-` substituídas pela **roda do mouse**: zoom contínuo de 1x a 2x (0,1 por clique, frações em touchpad), com transição suave.
 - Zooms fracionários escalados com `smoothscale`; 1x e 2x continuam nítidos.
@@ -61,4 +69,4 @@ Registro do que foi implementado em cada etapa, da mais recente para a mais anti
 
 ## Próximos passos sugeridos
 - Usar as portas simples (`door_single_*`) — hoje todas as portas têm 2 tiles.
-- Zumbis perseguirem o personagem quando o veem, e dano/vida.
+- Zumbis perseguirem e atacarem o personagem (vida do personagem, usando a sprite `damage.png`).
