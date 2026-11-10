@@ -56,6 +56,22 @@ class TilesetTests(unittest.TestCase):
         self.assertEqual(pygame.image.tobytes(a, "RGB"), pygame.image.tobytes(b, "RGB"))
 
 
+    def test_wall_shadow_on_floor(self):
+        d = generate(42)
+        surf = render_map(d, self.tiles)
+        x, y = next((x, y) for y in range(d.height) for x in range(d.width)
+                    if d.is_floor(x, y) and not d.is_floor(x, y - 1)
+                    and (x, y) not in d.door_at and (x, y - 1) not in d.door_at)
+        t = S.TILE
+
+        def lum(px, py):
+            r, g, b, _ = surf.get_at((px, py))
+            return r + g + b
+        # topo do tile (encostado na parede) bem mais escuro que o meio
+        top = sum(lum(x * t + i, y * t + 1) for i in range(8, 24))
+        mid = sum(lum(x * t + i, y * t + t // 2 + 6) for i in range(8, 24))
+        self.assertLess(top, mid * 0.75)
+
     def test_door_sprites_and_toggle_redraw(self):
         t = S.TILE
         sizes = {"top": (2 * t, 2 * t), "bottom": (2 * t, t), "left": (t, 2 * t), "right": (t, 2 * t)}

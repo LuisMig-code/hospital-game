@@ -24,13 +24,23 @@ COLOR_WALL = (90, 90, 90)       # cinza: não dá para andar (fallback sem tiles
 COLOR_WALL_TOP = (35, 40, 42)   # topo das paredes visto de cima
 COLOR_DOOR_CLOSED = (120, 80, 40)  # porta fechada (fallback sem tileset)
 COLOR_DOOR_OPEN = (50, 35, 20)     # porta aberta (fallback sem tileset)
+COLOR_GRID = (0, 0, 0, 40)      # linhas do grid (com transparência)
+COLOR_BG = (20, 20, 20)
+COLOR_TEXT = (255, 255, 255)
 
 # Variações do tileset (escolhidas pela seed)
 FLOOR_BLOOD_CHANCE = 0.08       # chance de um bloco 3x3 de piso ter sangue
 WALL_VENT_CHANCE = 0.15         # chance de uma parede ter ventilação
-COLOR_GRID = (0, 0, 0, 40)      # linhas do grid (com transparência)
-COLOR_BG = (20, 20, 20)
-COLOR_TEXT = (255, 255, 255)
+
+# Sombras e luz
+WALL_SHADOW_TOP = 20            # px de sombra no piso logo abaixo de uma parede
+WALL_SHADOW_SIDE = 8            # px de sombra no piso ao lado de uma parede
+WALL_SHADOW_ALPHA = 150         # intensidade máxima da sombra das paredes (0-255)
+PLAYER_SHADOW_ALPHA = 130       # sombra (elipse) sob os pés do personagem
+OCCLUDER_ALPHA = 150            # opacidade da porta quando o personagem passa atrás dela
+LIGHT_EDGE_ALPHA = 110          # escurecimento na borda do raio de visão (0 = sem queda de luz)
+LIGHT_FLICKER = True            # tremulação sutil da luz (lâmpada de hospital)
+HUD_PANEL_ALPHA = 150           # opacidade do painel atrás do HUD
 
 # Visão (névoa de guerra)
 VISION_RADIUS = 8               # raio de visão em tiles

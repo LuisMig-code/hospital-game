@@ -193,8 +193,45 @@ def render_map(dungeon, tileset):
                 x += 1
             _draw_wall_run(surf, dungeon, tileset, rng, start, x - 1, y)
 
+    bake_wall_shadows(surf, dungeon)
     init_doors(surf, dungeon, tileset)
     return surf
+
+
+def _gradient(size, horizontal, reverse=False):
+    """Faixa preta com alpha em degradê: WALL_SHADOW_ALPHA na borda da
+    parede até 0. horizontal=True degradê na largura; reverse inverte o lado."""
+    w, h = size
+    surf = pygame.Surface(size, pygame.SRCALPHA)
+    n = w if horizontal else h
+    for i in range(n):
+        k = 1 - i / n
+        alpha = round(S.WALL_SHADOW_ALPHA * k * k)   # queda quadrática: mais suave
+        pos = n - 1 - i if reverse else i
+        rect = (pos, 0, 1, h) if horizontal else (0, pos, w, 1)
+        surf.fill((0, 0, 0, alpha), rect)
+    return surf
+
+
+def bake_wall_shadows(surf, dungeon):
+    """Sombra das paredes no piso (ambient occlusion), desenhada uma vez no
+    mapa pré-renderizado. Usa o grid (is_floor), então não depende das portas."""
+    t = S.TILE
+    top = _gradient((t, S.WALL_SHADOW_TOP), horizontal=False)
+    left = _gradient((S.WALL_SHADOW_SIDE, t), horizontal=True)
+    right = _gradient((S.WALL_SHADOW_SIDE, t), horizontal=True, reverse=True)
+    floor = dungeon.is_floor
+    for y in range(dungeon.height):
+        for x in range(dungeon.width):
+            if not floor(x, y):
+                continue
+            px, py = x * t, y * t
+            if not floor(x, y - 1):
+                surf.blit(top, (px, py))
+            if not floor(x - 1, y):
+                surf.blit(left, (px, py))
+            if not floor(x + 1, y):
+                surf.blit(right, (px + t - S.WALL_SHADOW_SIDE, py))
 
 
 def _solid(dungeon, x, y):

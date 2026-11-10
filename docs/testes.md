@@ -38,11 +38,18 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Olhando rente a uma parede, a fileira inteira dela no alcance fica visível.
 - Andando, `explored` só cresce e `visible` respeita o raio.
 
+### `tests/test_lighting.py`
+- `FogLayer`: começa toda preta; visível fica transparente; ao sair da visão fica escurecido e nunca volta a preto.
+- `render` cobre a tela inteira, é transparente no centro de um tile visível, opaco no não descoberto e tem valores intermediários na fronteira (borda suave).
+- Máscara de luz: centro claro, borda com a escuridão configurada, escurecendo do centro para fora.
+- Tremulação: desligada fica sempre no nível 0; ligada varia de nível.
+
 ### `tests/test_tileset.py`
 - O recorte encontra as 10 peças na ordem esperada (pisos em cima, portas embaixo, proporções corretas).
 - Nenhum pixel do contorno roxo sobra nas peças.
 - As peças são escaladas para múltiplos do tile (piso 96×96, paredes altas 64 px, parede baixa 32 px).
 - `render_map` é determinístico: a mesma seed gera exatamente a mesma imagem.
+- Sombra das paredes: o topo de um tile de chão encostado numa parede fica bem mais escuro que o meio.
 - Os sprites de porta têm o tamanho certo para cada lado; abrir todas as portas muda o mapa, e fechar de novo volta exatamente à imagem original.
 
 ## Teste manual
@@ -51,4 +58,4 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 venv\Scripts\python.exe main.py 42
 ```
 
-Confira: nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa de guerra, zoom 1x/2x, R/G/V.
+Confira: nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom 1x/2x, R/G/V.

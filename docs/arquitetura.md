@@ -10,6 +10,7 @@
 | `doors.py` | Onde ficam as portas e abrir/fechar | `Door`, `place_doors`, `try_toggle` |
 | `player.py` | Movimento tile a tile, corrida, estamina, animação | `Player`, `tile_center` |
 | `fov.py` | Campo de visão e tiles já explorados | `compute_fov`, `Vision`, `in_radius` |
+| `lighting.py` | Névoa suave (1 pixel por tile, ampliada) e luz com queda/tremulação | `FogLayer`, `Light`, `build_light_mask` |
 | `sprites.py` | Recorta o sprite sheet do personagem em animações | `load_animations`, `slice_sheet` |
 | `tileset.py` | Recorta o tileset do hospital e desenha o mapa e as portas | `load_pieces`, `Tileset`, `render_map`, `draw_door` |
 
@@ -21,6 +22,7 @@ dungeon ► doors (place_doors, no fim de generate)
 doors ──► dungeon (WALL)
 player ─► settings
 fov ────► (só recebe o objeto Dungeon)
+lighting ► settings
 tileset ► dungeon (FLOOR), settings
 sprites ► settings
 ```
@@ -34,25 +36,26 @@ sprites ► settings
    - gera a dungeon (`generate`), já com as portas (fechadas);
    - pré-renderiza o mapa inteiro numa `Surface` (`build_map_surface` → `render_map`) e o grid (`build_grid_surface`) — o mapa só muda na área de uma porta quando ela abre/fecha;
    - cria o `Player` no spawn (chão mais próximo do canto superior esquerdo);
-   - cria a `Vision` e a superfície da névoa (`fog_surf`, toda preta).
+   - cria a `Vision` e a névoa (`FogLayer`, toda preta).
 3. A cada frame (`Game.run`):
    - eventos de teclado (R, G, V, +/-, Espaço, ESC);
    - Espaço → `toggle_door()`: `try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada (`update_vision(force=True)`);
    - `player.update(dt, teclas, dungeon)`;
-   - `update_vision()` — recalcula a visão se o personagem mudou de tile e "descobre" os tiles novos na névoa;
+   - `update_vision()` — recalcula a visão se o personagem mudou de tile e atualiza a névoa (`FogLayer.update`);
+   - `light.update(dt)` — tremulação da luz;
    - `draw_world()` e `draw_hud()`.
 
 ## Ordem de desenho (`draw_world`)
 
 O mundo é desenhado numa superfície do tamanho da área visível (`view_size()` = tela ÷ zoom) e depois escalado para a tela:
 
-1. mapa pré-renderizado (piso + paredes + portas no estado atual);
+1. mapa pré-renderizado (piso + sombras das paredes + paredes + portas no estado atual);
 2. grid (só sobre o piso), se ligado;
-3. névoa (`fog_surf`): preto no não descoberto, escurecido no já descoberto;
-4. tiles dentro da visão redesenhados por cima da névoa (cores normais);
-5. personagem.
+3. sombra do personagem e o personagem;
+4. sobreposição: a metade de cima de uma porta da parede de cima, semitransparente, se o personagem está atrás dela (`draw_door_overlap`);
+5. luz em volta do personagem (`Light.draw`) e névoa suave (`FogLayer.render`) — as duas só com a névoa ligada (V).
 
-O HUD (seed, tile, zoom, estamina, mensagens temporárias) é desenhado direto na tela, depois da escala, para não mudar de tamanho com o zoom.
+O HUD (seed, tile, zoom, estamina, mensagens temporárias) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto,, depois da escala, para não mudar de tamanho com o zoom.
 
 ## Coordenadas
 

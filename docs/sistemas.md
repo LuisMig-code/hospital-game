@@ -73,7 +73,7 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
   - **não descoberto**: preto;
   - **descoberto, fora da visão**: escurecido (`FOG_EXPLORED_ALPHA`);
   - **dentro da visão**: cores normais.
-- A névoa é uma superfície do tamanho do mapa, atualizada só nos tiles recém-descobertos (incremental).
+- A névoa é desenhada com bordas suaves (veja "Efeitos visuais" abaixo).
 
 ## Câmera e zoom (`main.py`)
 
@@ -94,3 +94,17 @@ O mapa inteiro é desenhado uma vez por dungeon (`render_map`) a partir das peç
 - O grid é desenhado só sobre o piso, para não cortar a arte das paredes.
 
 - **Portas**: desenhadas por cima, depois das paredes (veja "Portas" acima). Para decidir o desenho das paredes, um tile de porta conta como sólido — por isso a parede ao lado de uma porta de cima termina em **pilar**.
+
+## Efeitos visuais (`lighting.py`, `tileset.py`, `player.py`, `main.py`)
+
+| Efeito | Como funciona | Ajuste em `settings.py` |
+|---|---|---|
+| **Sombra das paredes no piso** | `bake_wall_shadows` desenha, uma vez, faixas em degradê nos tiles de chão encostados em parede: no topo (parede acima, a sombra da parede alta) e nas laterais. Cantos internos ficam mais escuros pela soma. Usa o grid, então não muda com as portas. | `WALL_SHADOW_TOP`, `WALL_SHADOW_SIDE`, `WALL_SHADOW_ALPHA` |
+| **Sombra do personagem** | Elipse escura e suave sob os pés, desenhada antes do sprite. | `PLAYER_SHADOW_ALPHA` |
+| **Personagem atrás da porta** | Portas da parede de cima ocupam 2 tiles; a metade de cima fica sobre o corredor. Com o personagem nesse corredor (ao norte da porta), essa metade é redesenhada por cima dele, semitransparente — dá profundidade sem esconder o personagem. | `OCCLUDER_ALPHA` |
+| **Névoa suave** | `FogLayer` guarda a névoa numa superfície minúscula (1 pixel por tile; alpha 255 não descoberto, `FOG_EXPLORED_ALPHA` descoberto, 0 visível). A cada quadro, só o pedaço que aparece na tela é ampliado com `smoothscale`: a interpolação cria degradês entre os tiles em vez de quadrados. | `FOG_EXPLORED_ALPHA` |
+| **Luz com queda** | Máscara radial (pré-calculada) centrada no personagem: claro perto dele, escurecendo até `LIGHT_EDGE_ALPHA` na borda do raio de visão. | `LIGHT_EDGE_ALPHA` |
+| **Tremulação** | A cada 0,08 s a luz sorteia um nível (quase sempre estável; às vezes uma piscada rápida, como lâmpada de hospital). São 4 máscaras pré-calculadas. | `LIGHT_FLICKER` |
+| **HUD** | Painel escuro semitransparente com cantos arredondados, texto com sombra de 1 px e barra de estamina arredondada. | `HUD_PANEL_ALPHA` |
+
+Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem abaixo dos 16 ms de 60 FPS.

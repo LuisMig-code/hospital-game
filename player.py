@@ -114,7 +114,35 @@ class Player:
         self.frame = int(self.frame_time * S.ANIM_FPS) % len(frames)
 
     # ------------------------------------------------------------------- draw
+    def feet(self):
+        """Ponto dos pés em pixels do mundo (base do sprite)."""
+        return (self.x, self.y + S.TILE / 2 - 4)
+
+    def sprite_rect(self):
+        """Retângulo do sprite atual em pixels do mundo."""
+        img = self.anims[self.anim][self.frame]
+        fx, fy = self.feet()
+        return img.get_rect(midbottom=(round(fx), round(fy)))
+
+    _shadow = None
+
+    @classmethod
+    def shadow(cls):
+        """Elipse escura e suave sob os pés (criada uma vez)."""
+        if cls._shadow is None:
+            w, h = 28, 10
+            surf = pygame.Surface((w, h), pygame.SRCALPHA)
+            # elipses concêntricas: mais escuro no centro, borda suave
+            for i in range(4):
+                a = round(S.PLAYER_SHADOW_ALPHA * (i + 1) / 4)
+                pygame.draw.ellipse(surf, (0, 0, 0, a), (i * 2, i, w - i * 4, h - i * 2))
+            cls._shadow = surf
+        return cls._shadow
+
     def draw(self, surf, camera):
         img = self.anims[self.anim][self.frame]
-        feet = (round(self.x - camera[0]), round(self.y + S.TILE / 2 - 4 - camera[1]))
+        fx, fy = self.feet()
+        feet = (round(fx - camera[0]), round(fy - camera[1]))
+        shadow = self.shadow()
+        surf.blit(shadow, shadow.get_rect(center=(feet[0], feet[1] + 1)))
         surf.blit(img, img.get_rect(midbottom=feet))

@@ -2,6 +2,14 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-09 — Melhorias visuais
+- Sombras das paredes no piso (degradê no topo e nas laterais dos tiles encostados em parede).
+- Sombra sob os pés do personagem.
+- Profundidade nas portas: passando atrás de uma porta da parede de cima, ela fica por cima do personagem, semitransparente.
+- Névoa com bordas suaves (`lighting.FogLayer`) no lugar dos quadrados tile a tile.
+- Luz em volta do personagem que escurece até a borda da visão, com tremulação sutil de lâmpada.
+- HUD com painel semitransparente, texto com sombra e barra de estamina arredondada.
+
 ## 2026-11-07 — Spawn no canto superior esquerdo e portas
 - O personagem nasce no chão mais próximo do canto superior esquerdo.
 - **Portas duplas** em todas as entradas das salas (cima, baixo, laterais), começando fechadas; **Espaço** abre/fecha a porta à frente.

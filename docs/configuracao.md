@@ -28,6 +28,19 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `FLOOR_BLOOD_CHANCE` | 0.08 | Chance de um bloco 3×3 de piso ter sangue |
 | `WALL_VENT_CHANCE` | 0.15 | Chance de ventilação numa parede alta |
 
+## Sombras e luz
+
+| Constante | Valor | Descrição |
+|---|---|---|
+| `WALL_SHADOW_TOP` | 20 | Altura (px) da sombra no piso logo abaixo de uma parede |
+| `WALL_SHADOW_SIDE` | 8 | Largura (px) da sombra no piso ao lado de uma parede |
+| `WALL_SHADOW_ALPHA` | 150 | Intensidade máxima da sombra das paredes (0–255) |
+| `PLAYER_SHADOW_ALPHA` | 130 | Intensidade da sombra sob o personagem |
+| `OCCLUDER_ALPHA` | 150 | Opacidade da porta quando o personagem passa atrás dela |
+| `LIGHT_EDGE_ALPHA` | 110 | Escurecimento na borda do raio de visão (0 = sem queda de luz) |
+| `LIGHT_FLICKER` | True | Tremulação sutil da luz |
+| `HUD_PANEL_ALPHA` | 150 | Opacidade do painel atrás do HUD |
+
 ## Visão
 
 | Constante | Valor | Descrição |

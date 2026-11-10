@@ -7,7 +7,7 @@ Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a par
 | Documento | Conteúdo |
 |---|---|
 | [arquitetura.md](arquitetura.md) | Módulos, loop do jogo e ordem de desenho |
-| [sistemas.md](sistemas.md) | Geração da dungeon, movimento, estamina, visão, câmera/zoom e renderização do mapa |
+| [sistemas.md](sistemas.md) | Geração da dungeon, portas, movimento, estamina, visão, câmera/zoom, renderização do mapa e efeitos visuais |
 | [assets.md](assets.md) | Sprite sheet do personagem, tileset do hospital e como os recortes funcionam |
 | [configuracao.md](configuracao.md) | Todas as constantes de `settings.py` |
 | [testes.md](testes.md) | Como rodar os testes e o que cada um cobre |
@@ -37,7 +37,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 | `+` / `-` | Zoom 1x ↔ 2x |
 | R | Gerar nova dungeon (seed aleatória) |
 | G | Mostrar/esconder o grid |
-| V | Ligar/desligar a névoa de guerra (mostra o mapa inteiro) |
+| V | Ligar/desligar a névoa de guerra e a iluminação (mostra o mapa inteiro) |
 | ESC | Sair |
 
 ## Estrutura de pastas
@@ -49,6 +49,7 @@ dungeon.py           geração procedural (BSP) a partir da seed; spawn
 doors.py             posicionamento das portas e abrir/fechar
 player.py            movimento em grid, corrida, estamina, animação
 fov.py               campo de visão (linha de visão) e memória do explorado
+lighting.py          névoa com bordas suaves e luz em volta do personagem
 sprites.py           recorte do sprite sheet do personagem
 tileset.py           recorte do tileset do hospital e desenho do mapa
 tools/export_frames.py   exporta os recortes em PNG para conferência
