@@ -46,6 +46,7 @@ class Player:
         self.attacking = False
         self.attack_time = 0.0
         self.attack_queued = False         # pedido no meio de um passo: começa ao chegar
+        self.turn_timer = 0.0              # virou parado: espera isso para começar a andar
         self.hit_done = False              # o golpe deste ataque já acertou?
 
     # ------------------------------------------------------------------ ataque
@@ -82,11 +83,23 @@ class Player:
         return hit
 
     # ------------------------------------------------------------------ input
-    def _try_start_step(self, keys, dungeon, blocked=frozenset()):
+    def _try_start_step(self, keys, dungeon, blocked=frozenset(), chained=False):
         """Se uma direção está pressionada, vira para ela e, se o tile vizinho
-        é chão, começa a andar até ele."""
+        é chão, começa a andar até ele.
+
+        Parado, apertar uma direção diferente da atual primeiro só **vira**;
+        segurando a tecla, anda depois de TURN_DELAY s. Já andando
+        (chained=True, ao chegar num tile com a tecla apertada) troca de
+        direção e segue direto, sem pausa."""
         d = _read_direction(keys)
         if d is None:
+            self.turn_timer = 0.0
+            return
+        if d != self.facing and not chained:
+            self.facing = d
+            self.turn_timer = S.TURN_DELAY
+            return
+        if self.turn_timer > 0:            # acabou de virar: espera para andar
             return
         self.facing = d
         dx, dy = DIRS[d]
@@ -115,6 +128,7 @@ class Player:
             self._animate(dt)
             return hit
 
+        self.turn_timer = max(0.0, self.turn_timer - dt)
         if self.target is None:
             self._try_start_step(keys, dungeon, blocked)
 
@@ -134,7 +148,7 @@ class Player:
                 self.tile, self.target = self.target, None
                 if self.attack_queued:     # chegou no tile: o ataque pedido começa
                     break
-                self._try_start_step(keys, dungeon, blocked)
+                self._try_start_step(keys, dungeon, blocked, chained=True)
             else:
                 step = speed * t
                 self.x += step * (1 if tx > self.x else -1 if tx < self.x else 0)

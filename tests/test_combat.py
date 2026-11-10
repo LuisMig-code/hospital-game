@@ -35,20 +35,25 @@ class DamageMapTests(unittest.TestCase):
             ring1 = [t for t, v in dmg.items() if v == 6]
             ring2 = [t for t, v in dmg.items() if v == 4]
             self.assertEqual(len(ring1), 8 - 1, d)                  # 8 vizinhos menos o personagem
-            self.assertEqual(len(ring2), 16, d)
+            self.assertEqual(len(ring2), 16 - 5, d)                 # sem a fileira a 3 tiles à frente
             for t in ring1:
                 self.assertEqual(max(abs(t[0] - impact[0]), abs(t[1] - impact[1])), 1)
             for t in ring2:
                 self.assertEqual(max(abs(t[0] - impact[0]), abs(t[1] - impact[1])), 2)
-            self.assertEqual(len(dmg), 1 + 7 + 16)                  # nada além de 2 tiles
+            self.assertEqual(len(dmg), 1 + 7 + 11)                  # nada além de 2 tiles do impacto
+            for t in dmg:                                           # nem além de 2 tiles à frente
+                self.assertLessEqual((t[0] - 10) * dx + (t[1] - 10) * dy, S.ATTACK_REACH)
 
     def test_example_from_spec(self):
         dmg = damage_map((10, 9), (10, 10))   # olhando para cima
         self.assertEqual(dmg[(10, 9)], 11)
         self.assertEqual(dmg[(9, 9)], 6)
         self.assertEqual(dmg[(11, 10)], 6)    # ao lado do personagem, colado no impacto
-        self.assertEqual(dmg[(10, 7)], 4)
-        self.assertEqual(dmg[(8, 11)], 4)
+        self.assertEqual(dmg[(10, 8)], 6)     # 2 tiles à frente: ainda alcança
+        self.assertEqual(dmg[(8, 8)], 4)
+        self.assertEqual(dmg[(8, 11)], 4)     # atrás, na diagonal
+        self.assertNotIn((10, 7), dmg)        # 3 tiles à frente: fora do alcance
+        self.assertNotIn((8, 7), dmg)
 
 
 class ApplyAttackTests(unittest.TestCase):
@@ -73,7 +78,8 @@ class ApplyAttackTests(unittest.TestCase):
         ix, iy = self.impact
         a = self.add((ix, iy))            # impacto: 11 -> morre
         b = self.add((ix + 1, iy - 1))    # colado: 6 -> fica com 4
-        c = self.add((ix - 2, iy - 2))    # a 2: 4 -> fica com 6
+        c = self.add((ix - 2, iy - 1))    # a 2: 4 -> fica com 6
+        out = self.add((ix, iy - 2))      # 3 à frente do personagem: fora do alcance
         far = self.add((ix + 3, iy))      # fora da área
         hits = apply_attack(self.horde, self.impact, self.player.tile, self.visible)
         self.assertEqual({(id(z), dmg, died) for z, dmg, died in hits},
@@ -82,6 +88,7 @@ class ApplyAttackTests(unittest.TestCase):
         self.assertEqual((b.state, b.hp), (IDLE, 4))
         self.assertEqual((c.state, c.hp), (IDLE, 6))
         self.assertEqual(far.hp, S.ZOMBIE_HP)
+        self.assertEqual(out.hp, S.ZOMBIE_HP)
 
     def test_six_plus_four_kills(self):
         ix, iy = self.impact

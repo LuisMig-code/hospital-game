@@ -2,6 +2,10 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-10 — Virar antes de andar e alcance do golpe
+- Parado, apertar outra direção primeiro só **vira** o personagem; segurando a tecla ele anda depois de 0,12 s (`TURN_DELAY`). Na mesma direção, ou já andando, segue sem pausa.
+- Golpe: alcance para a frente reduzido de 3 para **2 tiles** a partir do personagem (`ATTACK_REACH`); lados e trás iguais.
+
 ## 2026-11-10 — Parado olhando para onde andava
 - Ao parar, o personagem continua virado para a direção em que andava (antes sempre voltava a olhar de frente). Poses paradas `idle_right/left/up` vêm do 1º quadro de cada caminhada.
 

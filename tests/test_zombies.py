@@ -111,11 +111,13 @@ class BehaviourTests(unittest.TestCase):
         # personagem logo à esquerda do zumbi, andando para a direita
         self.player = Player(ANIMS, (x - 1, y)) if self.d.is_walkable(x - 1, y) else Player(ANIMS, (x + 1, y))
         key = pygame.K_d if self.player.tile[0] < x else pygame.K_a
+        self.player.facing = "right" if key == pygame.K_d else "left"   # já virado: anda na hora
         # enterrado: não bloqueia
         self.player.update(DT, Keys({key: True}), self.d, blocked=self.horde.blocked_tiles())
         self.assertEqual(self.player.target, z.tile)
         # fora do chão: bloqueia
         self.player = Player(ANIMS, self.player.tile)
+        self.player.facing = "right" if key == pygame.K_d else "left"
         z.wake()
         self.player.update(DT, Keys({key: True}), self.d, blocked=self.horde.blocked_tiles())
         self.assertIsNone(self.player.target)

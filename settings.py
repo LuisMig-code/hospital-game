@@ -57,6 +57,7 @@ PLAYER_SPEED = 150 * 1.3        # pixels por segundo (andando) — 195 px/s
 RUN_MULT = 2.0                  # correndo (Shift) anda 2x mais rápido
 PLAYER_SPRITE_HEIGHT = 48       # altura do sprite na tela (1.5 tile)
 ANIM_FPS = 13                   # frames de animação por segundo (2x correndo)
+TURN_DELAY = 0.12               # parado: apertar outra direção só vira; segurando, anda depois disso
 
 # Estamina
 STAMINA_MAX = 100
@@ -78,6 +79,7 @@ ZOMBIE_EMERGE_FPS = 8           # animação saindo do chão (8 quadros = 1 s)
 ATTACK_FPS = 22                 # 9 quadros de ataque ≈ 0,4 s
 ATTACK_HIT_FRAME = 5            # quadro em que o golpe acerta (começo do rastro)
 ATTACK_DAMAGE = (11, 6, 4)      # dano no impacto, colado no impacto, a 2 tiles do impacto
+ATTACK_REACH = 2                # alcance do golpe à frente do personagem (em tiles)
 ZOMBIE_HP = 10                  # vida de cada zumbi
 ZOMBIE_DEATH_FPS = 14           # zumbi afundando no chão ao morrer (surgir ao contrário)
 HIT_FLASH_TIME = 0.12           # segundos piscando ao levar dano

@@ -59,6 +59,7 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `RUN_MULT` | 2.0 | Multiplicador da velocidade ao correr |
 | `PLAYER_SPRITE_HEIGHT` | 48 | Altura do sprite na tela |
 | `ANIM_FPS` | 13 | Frames de animação por segundo (dobra correndo) |
+| `TURN_DELAY` | 0.12 | Parado, ao apertar outra direção: só vira; segurando, anda depois desse tempo (s) |
 
 ## Estamina
 
@@ -97,6 +98,7 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `ATTACK_FPS` | 22 | Quadros por segundo do ataque (9 quadros ≈ 0,4 s) |
 | `ATTACK_HIT_FRAME` | 5 | Quadro em que o golpe acerta |
 | `ATTACK_DAMAGE` | (11, 6, 4) | Dano no impacto, colado no impacto e a 2 tiles do impacto |
+| `ATTACK_REACH` | 2 | Alcance do golpe para a frente, a partir do personagem (tiles) |
 | `ZOMBIE_HP` | 10 | Vida de cada zumbi |
 | `ZOMBIE_DEATH_FPS` | 14 | Velocidade do zumbi afundando no chão ao morrer |
 | `HIT_FLASH_TIME` | 0.12 | Segundos piscando ao levar dano |

@@ -48,11 +48,13 @@ class PlayerTests(unittest.TestCase):
 
     def test_speed_is_30_percent_faster(self):
         p = Player(ANIMS, (0, 0))
+        p.facing = "right"                                   # já virado: anda na hora
         run(p, Keys({pygame.K_d: True}), 1.0, OpenField())
         self.assertAlmostEqual(p.x - tile_center((0, 0))[0], 150 * 1.3, delta=1)
 
     def test_running_is_twice_as_fast(self):
         walk, sprint = Player(ANIMS, (0, 0)), Player(ANIMS, (0, 0))
+        walk.facing = sprint.facing = "right"
         run(walk, Keys({pygame.K_d: True}), 2.0, OpenField())
         run(sprint, Keys({pygame.K_d: True, pygame.K_LSHIFT: True}), 2.0, OpenField())
         start = tile_center((0, 0))[0]
@@ -61,6 +63,7 @@ class PlayerTests(unittest.TestCase):
     def test_stamina_drain_and_regen(self):
         f = OpenField()
         p = Player(ANIMS, (0, 0))
+        p.facing = "right"
         self.assertEqual(p.stamina, 100)
         run(p, Keys({pygame.K_d: True, pygame.K_LSHIFT: True}), 1.0, f)
         self.assertAlmostEqual(p.stamina, 100 - S.STAMINA_DRAIN, delta=0.5)
@@ -86,6 +89,41 @@ class PlayerTests(unittest.TestCase):
 
         run(p, Keys(), 100, f)
         self.assertEqual(p.stamina, S.STAMINA_MAX)         # não passa do máximo
+
+
+class TurnTests(unittest.TestCase):
+    def test_tap_only_turns(self):
+        p = Player(ANIMS, (5, 5))                                   # começa olhando para baixo
+        run(p, Keys({pygame.K_d: True}), 2 * DT, OpenField())       # toque rápido
+        run(p, Keys(), 0.5, OpenField())
+        self.assertEqual((p.facing, p.tile, p.target), ("right", (5, 5), None))
+
+    def test_hold_turns_then_walks(self):
+        p = Player(ANIMS, (5, 5))
+        keys = Keys({pygame.K_d: True})
+        p.update(DT, keys, OpenField())
+        self.assertEqual((p.facing, p.target), ("right", None))     # primeiro só vira
+        t = DT
+        while p.target is None and t < 1:
+            p.update(DT, keys, OpenField())
+            t += DT
+        self.assertEqual(p.target, (6, 5))                          # segurando, anda
+        self.assertAlmostEqual(t, S.TURN_DELAY, delta=2 * DT)
+
+    def test_same_direction_walks_immediately(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "right"
+        p.update(DT, Keys({pygame.K_d: True}), OpenField())
+        self.assertIsNotNone(p.target)
+
+    def test_changing_direction_while_walking_has_no_pause(self):
+        p = Player(ANIMS, (5, 5))
+        p.facing = "right"
+        run(p, Keys({pygame.K_d: True}), 0.1, OpenField())          # andando para a direita
+        self.assertEqual(p.target, (6, 5))
+        while p.target == (6, 5):                                   # troca para baixo no meio
+            p.update(DT, Keys({pygame.K_s: True}), OpenField())
+        self.assertEqual(p.target, (6, 6))                          # ao chegar já segue para baixo
 
 
 class IdleFacingTests(unittest.TestCase):
@@ -141,6 +179,7 @@ class AttackTests(unittest.TestCase):
 
     def test_attack_requested_mid_step_starts_on_arrival(self):
         p = Player(ANIMS, (5, 5))
+        p.facing = "right"
         keys = Keys({pygame.K_d: True})
         p.update(DT, keys, OpenField())                             # começa a andar
         self.assertEqual(p.target, (6, 5))

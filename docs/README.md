@@ -31,7 +31,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 
 | Tecla | Ação |
 |---|---|
-| WASD / setas | Andar (um tile por vez; segurando, anda contínuo) |
+| WASD / setas | Andar (um tile por vez; segurando, anda contínuo). Parado, apertar outra direção primeiro só vira; segurando, anda em seguida |
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
 | Clique esquerdo / J | Atacar com a faca na direção em que o personagem está virado (dano em área) |
 | Espaço | Abrir/fechar a porta à frente do personagem |

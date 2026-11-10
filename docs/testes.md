@@ -30,12 +30,13 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Correndo, percorre 2x a distância de andando.
 - Estamina: gasta 25/s correndo, zera e deixa o personagem cansado (não corre até recuperar 20), recupera 10/s andando e 20/s parado, e não passa de 100.
 
+- Virar antes de andar: toque rápido em outra direção só vira; segurando, anda após `TURN_DELAY`; na mesma direção anda na hora; trocando de direção andando, segue sem pausa.
 - Ataque: o golpe acerta **uma vez**, no quadro 5, no tile à frente; durante o ataque não anda nem vira; pedido no meio de um passo começa ao chegar no tile; pedidos durante o ataque não empilham.
 
 - Parado: continua virado para a direção em que andava (`idle_<direção>`; de frente, `idle`).
 
 ### `tests/test_combat.py`
-- Área do golpe nas 4 direções: impacto 11, 7 tiles com 6 (os 8 vizinhos do impacto menos o personagem), 16 com 4, nada além.
+- Área do golpe nas 4 direções: impacto 11, 7 tiles com 6 (os 8 vizinhos do impacto menos o personagem), 11 com 4 (o anel de 16 sem a fileira a 3 tiles à frente), nada além de 2 tiles à frente.
 - Dano por distância: no impacto morre, colado fica com 4, a 2 fica com 6; 6 + 4 mata.
 - Não levam dano: enterrado, fora da visão, morrendo.
 - Morrendo: para de bloquear, afunda (quadros de 7 a 0), sai da horda e conta como abatido.

@@ -43,7 +43,10 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 ## Movimento (`player.py`)
 
 - O personagem anda **um tile por vez** e nunca para entre dois tiles.
-- Parado, lê uma direção (sem diagonal; a horizontal tem prioridade). Vira para ela e, se o tile vizinho é chão, define esse tile como alvo.
+- Parado, lê uma direção (sem diagonal; a horizontal tem prioridade).
+  - Se é **outra direção**, primeiro só **vira** para ela. Segurando a tecla, começa a andar depois de `TURN_DELAY` (0,12 s); um toque rápido só vira.
+  - Se já está virado para lá, anda na hora: se o tile vizinho é chão, define esse tile como alvo.
+  - Andando sem parar (ao chegar num tile com a tecla apertada), trocar de direção é imediato, sem pausa.
 - Em movimento, avança `velocidade × dt` até o centro do alvo. Ao chegar, encaixa exatamente no tile e, se a tecla continua pressionada, já começa o próximo passo no mesmo frame, usando o tempo que sobrou. Por isso segurar a tecla dá um movimento contínuo e suave.
 - Colisão: só "o tile de destino é chão?" (`dungeon.is_walkable`).
 - Velocidade: `PLAYER_SPEED` = 195 px/s (≈ 6 tiles/s); correndo, × `RUN_MULT` (2).
@@ -144,17 +147,16 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 - No quadro `ATTACK_HIT_FRAME` (5, quando aparece o rastro do golpe), `Player.update` devolve o **tile de impacto** (o tile à frente) — uma única vez por ataque.
 
 ### Dano em área
-O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais) até ele (`ATTACK_DAMAGE = (11, 6, 4)`):
+O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais) até ele (`ATTACK_DAMAGE = (11, 6, 4)`), mas **para a frente só alcança 2 tiles** a partir do personagem (`ATTACK_REACH`):
 
 ```
-4 4 4 4 4
 4 6 6 6 4
 4 6 11 6 4      (⊙ = personagem olhando para cima)
 4 6 ⊙ 6 4
 4 4 4 4 4
 ```
 
-- Impacto: **11** (mata na hora: zumbi tem 10). Colado no impacto: **6**. A 2 tiles do impacto: **4**. O personagem não se acerta.
+- Impacto: **11** (mata na hora: zumbi tem 10). Colado no impacto: **6**. A 2 tiles do impacto: **4**, nos lados e atrás (a fileira a 3 tiles à frente do personagem ficou de fora). O personagem não se acerta.
 - 6 + 4 também mata; quem leva só 6 fica com 4 de vida.
 - Só leva dano o zumbi **vivo e fora do chão** que está num tile **visível** pelo personagem (parede bloqueia o golpe, igual à visão). Vale o tile em que o zumbi está desenhado (no meio de um passo, o mais próximo).
 

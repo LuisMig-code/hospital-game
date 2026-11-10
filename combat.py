@@ -2,7 +2,8 @@
 
 O golpe acerta o tile à frente do personagem (o impacto) e espalha em volta:
 distância de Chebyshev ao impacto 0 → ATTACK_DAMAGE[0] (11), 1 → [1] (6),
-2 → [2] (4). O personagem não se acerta. Só leva dano quem o personagem
+2 → [2] (4). Para a frente só alcança ATTACK_REACH (2) tiles a partir do
+personagem. O personagem não se acerta. Só leva dano quem o personagem
 está vendo (parede bloqueia o golpe, igual à visão).
 
 Sem pygame aqui: a parte de desenho dos números fica em main.py.
@@ -11,14 +12,21 @@ import settings as S
 
 
 def damage_map(impact, player_tile):
-    """{tile: dano} do golpe com impacto em `impact`."""
+    """{tile: dano} do golpe com impacto em `impact`.
+
+    Para a frente (direção do personagem até o impacto) o golpe só alcança
+    ATTACK_REACH tiles a partir do personagem; para os lados e para trás
+    vale a área inteira em volta do impacto."""
     ix, iy = impact
-    reach = len(S.ATTACK_DAMAGE) - 1
+    px, py = player_tile
+    fx, fy = ix - px, iy - py                     # direção para onde ele olha
+    spread = len(S.ATTACK_DAMAGE) - 1
     out = {}
-    for dy in range(-reach, reach + 1):
-        for dx in range(-reach, reach + 1):
+    for dy in range(-spread, spread + 1):
+        for dx in range(-spread, spread + 1):
             tile = (ix + dx, iy + dy)
-            if tile != tuple(player_tile):
+            ahead = (tile[0] - px) * fx + (tile[1] - py) * fy
+            if tile != (px, py) and ahead <= S.ATTACK_REACH:
                 out[tile] = S.ATTACK_DAMAGE[max(abs(dx), abs(dy))]
     return out
 
