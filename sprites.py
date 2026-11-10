@@ -143,6 +143,10 @@ def load_animations(target_height=PLAYER_SPRITE_HEIGHT, raw=False):
                 img = pygame.transform.smoothscale(img, size)
             surfs.append(img)
         anims[name] = surfs
+    # Poses paradas viradas para os lados/costas: o 1º quadro de cada
+    # caminhada é a pose com os pés juntos ("idle" só existe de frente).
+    for d in ("right", "left", "up"):
+        anims[f"idle_{d}"] = [anims[f"walk_{d}"][0]]
     return anims
 
 

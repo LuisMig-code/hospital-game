@@ -13,6 +13,8 @@
 | 4 | `walk_up` (de costas) |
 | 5 | `walk_down` (de frente) |
 
+O sheet só tem `idle` de frente. Para parado olhando para os lados/costas, `load_animations` cria `idle_right`, `idle_left` e `idle_up` com o 1º quadro da caminhada de cada direção (pose com os pés juntos).
+
 > Atenção: a 2ª linha é o personagem andando para a **direita** e a 3ª para a **esquerda**. Isso foi conferido visualmente.
 
 **Como o recorte funciona** (`sprites.py`):

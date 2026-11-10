@@ -47,7 +47,8 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 - Em movimento, avança `velocidade × dt` até o centro do alvo. Ao chegar, encaixa exatamente no tile e, se a tecla continua pressionada, já começa o próximo passo no mesmo frame, usando o tempo que sobrou. Por isso segurar a tecla dá um movimento contínuo e suave.
 - Colisão: só "o tile de destino é chão?" (`dungeon.is_walkable`).
 - Velocidade: `PLAYER_SPEED` = 195 px/s (≈ 6 tiles/s); correndo, × `RUN_MULT` (2).
-- Animação: `walk_<direção>` em movimento, `idle` parado; a animação roda 2x mais rápido na corrida.
+- Animação: `walk_<direção>` em movimento; a animação roda 2x mais rápido na corrida.
+- Parado, continua **olhando para onde estava indo**: de frente usa a animação `idle`; para a direita, esquerda e costas usa a pose parada `idle_<direção>` (o 1º quadro da caminhada, com os pés juntos).
 
 ## Estamina (`player.py`)
 

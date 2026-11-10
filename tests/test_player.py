@@ -88,6 +88,24 @@ class PlayerTests(unittest.TestCase):
         self.assertEqual(p.stamina, S.STAMINA_MAX)         # não passa do máximo
 
 
+class IdleFacingTests(unittest.TestCase):
+    def test_keeps_facing_when_stopping(self):
+        anims = dict(ANIMS, **{f"idle_{d}": [pygame.Surface((10, 10))] for d in ("right", "left", "up")})
+        for key, d in ((pygame.K_d, "right"), (pygame.K_a, "left"), (pygame.K_w, "up"), (pygame.K_s, "down")):
+            p = Player(anims, (5, 5))
+            run(p, Keys({key: True}), 0.3, OpenField())    # anda um pouco
+            run(p, Keys(), 0.5, OpenField())               # solta e para
+            self.assertEqual(p.facing, d)
+            self.assertEqual(p.anim, "idle" if d == "down" else f"idle_{d}")
+
+    def test_real_sprites_have_side_idles(self):
+        pygame.init()
+        from sprites import load_animations
+        a = load_animations()
+        for d in ("right", "left", "up"):
+            self.assertIs(a[f"idle_{d}"][0], a[f"walk_{d}"][0])
+
+
 class AttackTests(unittest.TestCase):
     ATTACK_TIME = 9 / S.ATTACK_FPS
 

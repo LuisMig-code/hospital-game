@@ -156,6 +156,13 @@ class Player:
         else:
             self.stamina = min(S.STAMINA_MAX, self.stamina + S.STAMINA_REGEN_WALK * t)
 
+    def idle_anim(self):
+        """Parado: continua olhando para onde estava indo. De frente usa a
+        animação "idle"; nas outras direções, a pose parada "idle_<direção>"."""
+        if self.facing != "down" and f"idle_{self.facing}" in self.anims:
+            return f"idle_{self.facing}"
+        return "idle"
+
     def _animate(self, dt):
         if self.attacking:
             self.anim = f"attack_{self.facing}"
@@ -163,7 +170,7 @@ class Player:
             self.frame = min(n - 1, int(self.attack_time * S.ATTACK_FPS))
             self.frame_time = 0.0
             return
-        anim = f"walk_{self.facing}" if self.moving else "idle"
+        anim = f"walk_{self.facing}" if self.moving else self.idle_anim()
         if anim != self.anim:
             self.anim, self.frame_time = anim, 0.0
         self.frame_time += dt * (S.RUN_MULT if self.running else 1.0)

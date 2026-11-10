@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-10 — Parado olhando para onde andava
+- Ao parar, o personagem continua virado para a direção em que andava (antes sempre voltava a olhar de frente). Poses paradas `idle_right/left/up` vêm do 1º quadro de cada caminhada.
+
 ## 2026-11-10 — Ataque e combate
 - Sprite de ataque com faca recortada (`atack_spritsheet.png`): 9 quadros por direção, contorno magenta removido, alinhada com o personagem parado; esquerda = direita espelhada.
 - **Clique esquerdo / J** ataca na direção em que o personagem está virado; durante o ataque ele não anda.

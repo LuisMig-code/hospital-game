@@ -32,6 +32,8 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 
 - Ataque: o golpe acerta **uma vez**, no quadro 5, no tile à frente; durante o ataque não anda nem vira; pedido no meio de um passo começa ao chegar no tile; pedidos durante o ataque não empilham.
 
+- Parado: continua virado para a direção em que andava (`idle_<direção>`; de frente, `idle`).
+
 ### `tests/test_combat.py`
 - Área do golpe nas 4 direções: impacto 11, 7 tiles com 6 (os 8 vizinhos do impacto menos o personagem), 16 com 4, nada além.
 - Dano por distância: no impacto morre, colado fica com 4, a 2 fica com 6; 6 + 4 mata.
