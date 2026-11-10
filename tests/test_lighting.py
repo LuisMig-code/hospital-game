@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pygame  # noqa: E402
 
 import settings as S  # noqa: E402
-from lighting import UNEXPLORED, FogLayer, Light, build_light_mask  # noqa: E402
+from lighting import UNEXPLORED, FogLayer, Light, build_light_mask, explored_fog_alpha  # noqa: E402
 
 
 class FogLayerTests(unittest.TestCase):
@@ -21,11 +21,11 @@ class FogLayerTests(unittest.TestCase):
         self.assertEqual(fog.alpha_at(3, 3), 0)                   # visível
         self.assertEqual(fog.alpha_at(5, 5), UNEXPLORED)
         fog.update({(4, 3), (5, 3)})
-        self.assertEqual(fog.alpha_at(3, 3), S.FOG_EXPLORED_ALPHA)  # saiu da visão: escurecido
+        self.assertEqual(fog.alpha_at(3, 3), explored_fog_alpha())  # saiu da visão: escurecido
         self.assertEqual(fog.alpha_at(5, 3), 0)
         fog.update(set())
         for t in ((3, 3), (4, 3), (5, 3)):
-            self.assertEqual(fog.alpha_at(*t), S.FOG_EXPLORED_ALPHA)  # nunca volta a preto
+            self.assertEqual(fog.alpha_at(*t), explored_fog_alpha())  # nunca volta a preto
 
     def test_render_covers_view_and_is_smooth(self):
         fog = FogLayer(40, 30)
@@ -49,6 +49,30 @@ class FogLayerTests(unittest.TestCase):
 
 
 class LightTests(unittest.TestCase):
+    def test_no_seam_outside_mask(self):
+        """A escuridão fora do quadrado da máscara é igual à da borda dela
+        (antes havia um corte reto ~12 tiles longe do personagem)."""
+        light = Light(150)
+        surf = pygame.Surface((1280, 720))
+        surf.fill((200, 200, 200))
+        center = (1000, 120)                  # personagem perto do canto: máscara cortada
+        light.draw(surf, center)
+        rect = light.masks[0].get_rect(center=center)
+        y = center[1] + 30
+        inside = surf.get_at((rect.left + 2, y))
+        outside = surf.get_at((rect.left - 2, y))
+        self.assertEqual(inside[:3], outside[:3])
+        below_in = surf.get_at((center[0], rect.bottom - 2))
+        below_out = surf.get_at((center[0], rect.bottom + 2))
+        self.assertEqual(below_in[:3], below_out[:3])
+        far = surf.get_at((10, 700))
+        self.assertLess(far.r, 200)          # longe do personagem também escurece
+
+    def test_explored_final_darkness_matches_setting(self):
+        """Luz da borda + névoa compensada = FOG_EXPLORED_ALPHA no resultado."""
+        a = 1 - (1 - S.LIGHT_EDGE_ALPHA / 255) * (1 - explored_fog_alpha() / 255)
+        self.assertAlmostEqual(a * 255, S.FOG_EXPLORED_ALPHA, delta=1.5)
+
     def test_mask_gradient(self):
         r = 200
         mask = build_light_mask(r, 120)

@@ -103,7 +103,7 @@ O mapa inteiro é desenhado uma vez por dungeon (`render_map`) a partir das peç
 | **Sombra do personagem** | Elipse escura e suave sob os pés, desenhada antes do sprite. | `PLAYER_SHADOW_ALPHA` |
 | **Personagem atrás da porta** | Portas da parede de cima ocupam 2 tiles; a metade de cima fica sobre o corredor. Com o personagem nesse corredor (ao norte da porta), essa metade é redesenhada por cima dele, semitransparente — dá profundidade sem esconder o personagem. | `OCCLUDER_ALPHA` |
 | **Névoa suave** | `FogLayer` guarda a névoa numa superfície minúscula (1 pixel por tile; alpha 255 não descoberto, `FOG_EXPLORED_ALPHA` descoberto, 0 visível). A cada quadro, só o pedaço que aparece na tela é ampliado com `smoothscale`: a interpolação cria degradês entre os tiles em vez de quadrados. | `FOG_EXPLORED_ALPHA` |
-| **Luz com queda** | Máscara radial (pré-calculada) centrada no personagem: claro perto dele, escurecendo até `LIGHT_EDGE_ALPHA` na borda do raio de visão. | `LIGHT_EDGE_ALPHA` |
+| **Luz com queda** | Máscara radial (pré-calculada) centrada no personagem: claro perto dele, escurecendo até `LIGHT_EDGE_ALPHA` na borda do raio de visão. Fora do quadrado da máscara, o resto da tela recebe a mesma escuridão da borda (sem emenda). Como essa escuridão soma com a névoa, a névoa dos tiles descobertos é compensada (`explored_fog_alpha`) para o resultado final continuar sendo `FOG_EXPLORED_ALPHA`. | `LIGHT_EDGE_ALPHA` |
 | **Tremulação** | A cada 0,08 s a luz sorteia um nível (quase sempre estável; às vezes uma piscada rápida, como lâmpada de hospital). São 4 máscaras pré-calculadas. | `LIGHT_FLICKER` |
 | **HUD** | Painel escuro semitransparente com cantos arredondados, texto com sombra de 1 px e barra de estamina arredondada. | `HUD_PANEL_ALPHA` |
 

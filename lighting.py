@@ -14,6 +14,21 @@ import settings as S
 UNEXPLORED = 255
 
 
+def explored_fog_alpha():
+    """Alpha da névoa nos tiles já descobertos.
+
+    A luz escurece a tela inteira com pelo menos LIGHT_EDGE_ALPHA fora do raio
+    de visão, e a névoa é desenhada por cima. Para o resultado final dos tiles
+    descobertos continuar sendo FOG_EXPLORED_ALPHA, a névoa usa só o que falta:
+    1 - (1 - alvo) / (1 - luz).
+    """
+    target = S.FOG_EXPLORED_ALPHA / 255
+    light = S.LIGHT_EDGE_ALPHA / 255
+    if light >= target:
+        return 0
+    return round(255 * (1 - (1 - target) / (1 - light)))
+
+
 class FogLayer:
     def __init__(self, width, height):
         self.width, self.height = width, height
@@ -26,7 +41,7 @@ class FogLayer:
 
     def update(self, visible):
         """Tiles que saíram da visão ficam "escurecidos"; os visíveis, claros."""
-        dim = (*S.COLOR_UNEXPLORED, S.FOG_EXPLORED_ALPHA)
+        dim = (*S.COLOR_UNEXPLORED, explored_fog_alpha())
         for t in self.visible - visible:
             self.small.set_at(t, dim)
         for t in visible - self.visible:
@@ -69,11 +84,13 @@ class Light:
 
     def __init__(self, radius_px):
         edge = S.LIGHT_EDGE_ALPHA
-        self.masks = [build_light_mask(radius_px, min(255, edge + base), base)
-                      for base in self.LEVELS]
+        self.edges = [min(255, edge + base) for base in self.LEVELS]
+        self.masks = [build_light_mask(radius_px, e, base)
+                      for e, base in zip(self.edges, self.LEVELS)]
         self.level = 0
         self.timer = 0.0
         self.rng = random.Random()
+        self._solids = {}   # (nível, tamanho da tela) -> superfície sólida da escuridão da borda
 
     def update(self, dt):
         if not S.LIGHT_FLICKER:
@@ -87,8 +104,32 @@ class Light:
         # quase sempre estável; de vez em quando uma piscada rápida
         self.level = 3 if r < 0.03 else 2 if r < 0.08 else 1 if r < 0.25 else 0
 
+    def _solid(self, size):
+        key = (self.level, size)
+        if key not in self._solids:
+            solid = pygame.Surface(size, pygame.SRCALPHA)
+            solid.fill((0, 0, 0, self.edges[self.level]))
+            self._solids[key] = solid
+        return self._solids[key]
+
     def draw(self, surf, center):
-        """Escurece em volta do personagem. Fora do quadrado da máscara (que
-        já passa 2 tiles além do raio de visão) quem escurece é a névoa."""
+        """Escurece a tela: degradê em volta do personagem e, fora do quadrado
+        da máscara, a mesma escuridão da borda — sem emenda entre as duas."""
         mask = self.masks[self.level]
-        surf.blit(mask, mask.get_rect(center=center))
+        rect = mask.get_rect(center=center)
+        surf.blit(mask, rect)
+        if self.edges[self.level] == 0:
+            return
+        w, h = surf.get_size()
+        solid = self._solid((w, h))
+        top = max(0, min(h, rect.top))
+        bottom = max(0, min(h, rect.bottom))
+        left = max(0, min(w, rect.left))
+        right = max(0, min(w, rect.right))
+        # 4 faixas ao redor do quadrado (a superfície sólida é reaproveitada)
+        for r in (pygame.Rect(0, 0, w, top),
+                  pygame.Rect(0, bottom, w, h - bottom),
+                  pygame.Rect(0, top, left, bottom - top),
+                  pygame.Rect(right, top, w - right, bottom - top)):
+            if r.w > 0 and r.h > 0:
+                surf.blit(solid, r.topleft, r)

@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-09 — Correção: corte reto na iluminação
+- A escuridão da luz só cobria um quadrado em volta do personagem (~10 tiles para cada lado); além dele as áreas exploradas ficavam mais claras, criando um corte reto por volta dos 12 tiles. Agora a tela inteira recebe a escuridão da borda e a névoa das áreas exploradas é compensada para manter o mesmo brilho.
+
 ## 2026-11-09 — Melhorias visuais
 - Sombras das paredes no piso (degradê no topo e nas laterais dos tiles encostados em parede).
 - Sombra sob os pés do personagem.

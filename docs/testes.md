@@ -39,9 +39,11 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Andando, `explored` só cresce e `visible` respeita o raio.
 
 ### `tests/test_lighting.py`
-- `FogLayer`: começa toda preta; visível fica transparente; ao sair da visão fica escurecido e nunca volta a preto.
+- `FogLayer`: começa toda preta; visível fica transparente; ao sair da visão fica escurecido (alpha compensado pela luz) e nunca volta a preto.
 - `render` cobre a tela inteira, é transparente no centro de um tile visível, opaco no não descoberto e tem valores intermediários na fronteira (borda suave).
 - Máscara de luz: centro claro, borda com a escuridão configurada, escurecendo do centro para fora.
+- Sem emenda: dentro e fora do quadrado da máscara a escuridão é a mesma, mesmo com o personagem perto do canto da tela.
+- Luz da borda + névoa compensada dão exatamente `FOG_EXPLORED_ALPHA` nos tiles descobertos.
 - Tremulação: desligada fica sempre no nível 0; ligada varia de nível.
 
 ### `tests/test_tileset.py`

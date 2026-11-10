@@ -46,7 +46,7 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | Constante | Valor | Descrição |
 |---|---|---|
 | `VISION_RADIUS` | 8 | Raio de visão em tiles |
-| `FOG_EXPLORED_ALPHA` | 160 | Escurecimento do já descoberto (0 = nada, 255 = preto) |
+| `FOG_EXPLORED_ALPHA` | 160 | Escurecimento final do já descoberto (0 = nada, 255 = preto), já contando a luz |
 | `COLOR_UNEXPLORED` | (0, 0, 0) | Cor do não descoberto |
 
 ## Jogador
