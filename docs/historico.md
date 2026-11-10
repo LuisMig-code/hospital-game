@@ -2,6 +2,13 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-10 — Zumbis sem pausa
+- `ZOMBIE_IDLE_TIME` zerado: os zumbis emendam uma caminhada na outra. Cercados, tentam de novo a cada 0,1–0,3 s.
+
+## 2026-11-10 — Ataque no Espaço e zumbis mais ativos
+- O ataque passou para o **Espaço**, o mesmo botão das portas: com uma porta à frente (ou embaixo do personagem) o Espaço abre/fecha; senão, ataca. Clique esquerdo e J não atacam mais.
+- Zumbis ficam parados no máximo **1 s** (antes 1–4 s) antes de voltar a andar.
+
 ## 2026-11-10 — Virar antes de andar e alcance do golpe
 - Parado, apertar outra direção primeiro só **vira** o personagem; segurando a tecla ele anda depois de 0,12 s (`TURN_DELAY`). Na mesma direção, ou já andando, segue sem pausa.
 - Golpe: alcance para a frente reduzido de 3 para **2 tiles** a partir do personagem (`ATTACK_REACH`); lados e trás iguais.

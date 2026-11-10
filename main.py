@@ -4,8 +4,8 @@ Uso:
     venv\\Scripts\\python.exe main.py            # seed aleatória
     venv\\Scripts\\python.exe main.py 12345      # seed específica (número ou texto)
 
-Controles: WASD/setas movem, Shift corre, clique esquerdo/J ataca, roda do mouse dá zoom, R gera nova dungeon,
-G liga/desliga o grid, V liga/desliga a névoa, Espaço abre/fecha portas, ESC sai.
+Controles: WASD/setas movem, Shift corre, Espaço ataca (ou abre/fecha a porta à frente), roda do mouse dá zoom, R gera nova dungeon,
+G liga/desliga o grid, V liga/desliga a névoa, ESC sai.
 """
 import math
 import random
@@ -93,6 +93,12 @@ class Game:
         self.fog = FogLayer(self.dungeon.width, self.dungeon.height)
         self.update_vision()
         print(f"Seed: {seed} -> {len(self.dungeon.rooms)} salas")
+
+    def action(self):
+        """Espaço: se há porta à frente (ou o personagem está numa), abre/fecha;
+        senão, ataca na direção em que ele está virado."""
+        if self.toggle_door() is None:
+            self.player.request_attack()
 
     def toggle_door(self):
         """Espaço: abre/fecha a porta à frente do personagem."""
@@ -251,7 +257,7 @@ class Game:
 
         self.draw_controls()
 
-    CONTROLS = ("[WASD] andar  [Shift] correr  [Clique/J] atacar  [Espaço] porta  "
+    CONTROLS = ("[WASD] andar  [Shift] correr  [Espaço] atacar/porta  "
                 "[Roda] zoom  [R] nova  [G] grid  [V] névoa  [ESC] sair")
 
     def draw_controls(self):
@@ -306,12 +312,10 @@ class Game:
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_v:
                     self.show_fog = not self.show_fog
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
-                    self.toggle_door()
+                    self.action()
                 if e.type == pygame.MOUSEWHEEL:
                     # precise_y: frações de "clique" em touchpads (scroll contínuo)
                     self.change_zoom(getattr(e, "precise_y", e.y))
-                if (e.type == pygame.MOUSEBUTTONDOWN and e.button == 1) or                         (e.type == pygame.KEYDOWN and e.key == pygame.K_j):
-                    self.player.request_attack()
 
             self.step(dt, pygame.key.get_pressed())
             self.draw_world()

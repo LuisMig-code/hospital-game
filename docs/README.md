@@ -33,8 +33,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 |---|---|
 | WASD / setas | Andar (um tile por vez; segurando, anda contínuo). Parado, apertar outra direção primeiro só vira; segurando, anda em seguida |
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
-| Clique esquerdo / J | Atacar com a faca na direção em que o personagem está virado (dano em área) |
-| Espaço | Abrir/fechar a porta à frente do personagem |
+| Espaço | Se há uma porta à frente (ou o personagem está numa): abre/fecha. Senão: **ataca** com a faca na direção em que ele está virado (dano em área) |
 | Roda do mouse | Zoom contínuo e suave entre 1x e 2x (para cima aproxima) |
 | R | Gerar nova dungeon (seed aleatória) |
 | G | Mostrar/esconder o grid |

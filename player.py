@@ -55,7 +55,7 @@ class Player:
         return len(frames) if frames else 9
 
     def request_attack(self):
-        """Clique/J: ataca na direção em que está virado. Durante um ataque o
+        """Espaço (sem porta à frente): ataca na direção em que está virado. Durante um ataque o
         pedido é ignorado; no meio de um passo, o ataque começa ao chegar."""
         if not self.attacking:
             self.attack_queued = True

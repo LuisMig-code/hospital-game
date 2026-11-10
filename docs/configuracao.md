@@ -86,7 +86,7 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `ZOMBIE_SIZE` | 64 | Tamanho do sprite na tela (quadro de 32 px escalado 2×) |
 | `ZOMBIES_PER_ROOM` | (3, 5) | Mínimo e máximo de zumbis por sala |
 | `ZOMBIE_SPEED` | 45 | Velocidade andando, em px/s |
-| `ZOMBIE_IDLE_TIME` | (1.0, 4.0) | Tempo parado entre caminhadas, em segundos |
+| `ZOMBIE_IDLE_TIME` | (0.0, 0.0) | Tempo parado entre caminhadas, em segundos (0 = emendam uma caminhada na outra) |
 | `ZOMBIE_WANDER_STEPS` | (1, 4) | Tiles andados em cada caminhada |
 | `ZOMBIE_ANIM_FPS` | 6 | Quadros por segundo parado/andando |
 | `ZOMBIE_EMERGE_FPS` | 8 | Quadros por segundo saindo do chão (8 quadros = 1 s) |

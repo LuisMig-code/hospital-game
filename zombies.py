@@ -99,7 +99,7 @@ class Zombie:
                 return
         # cercado: espera um pouco e tenta de novo
         self.state = IDLE
-        self.timer = rng.uniform(0.3, 1.0)
+        self.timer = rng.uniform(0.1, 0.3)
 
     def update(self, dt, dungeon, blocked, rng):
         """blocked: tiles ocupados pelo personagem e pelos outros zumbis."""

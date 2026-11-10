@@ -43,8 +43,8 @@ sprites ► settings
    - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn);
    - cria a `Vision` e a névoa (`FogLayer`, toda preta).
 3. A cada frame (`Game.run`):
-   - eventos de teclado (R, G, V, Espaço, J, ESC) e do mouse (roda → `change_zoom`; clique esquerdo ou J → `player.request_attack()`);
-   - Espaço → `toggle_door()`: `try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada (`update_vision(force=True)`);
+   - eventos de teclado (R, G, V, Espaço, ESC) e da roda do mouse (→ `change_zoom`);
+   - Espaço → `action()`: primeiro `toggle_door()` (`try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada com `update_vision(force=True)`); se não há porta à frente nem embaixo do personagem → `player.request_attack()`;
    - `horde.update(dt, player, vision.visible)` — acorda os zumbis vistos e move os ativos;
    - a lógica do quadro fica em `Game.step(dt, teclas)` (os testes a usam sem janela):
    - `player.update(dt, teclas, dungeon, blocked=horde.blocked_tiles())` — zumbis vivos bloqueiam; no quadro do golpe devolve o tile de impacto → `apply_attack(horde, impacto, tile do personagem, vision.visible)` → números de dano (`texts_for`);

@@ -29,7 +29,7 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 ### Comportamento
 - `Door`: `tiles` (2 tiles), `side` (lado da sala), `open` (começa `False`).
 - Os tiles de porta continuam `FLOOR` no grid. `Dungeon.is_walkable` devolve `False` para **porta fechada** — então a porta fechada bloqueia o movimento e a visão automaticamente. `Dungeon.is_floor` ignora as portas (usado na geração e no desenho).
-- **Espaço** → `try_toggle(dungeon, player)`: usa a porta no tile à frente do personagem (direção em que ele está virado) ou no próprio tile. Abre/fecha os 2 tiles juntos. Não fecha se o personagem estiver em cima da porta ou indo para ela (mostra "Saia da porta para fechá-la").
+- **Espaço** (o mesmo botão do ataque; a porta tem prioridade) → `try_toggle(dungeon, player)`: usa a porta no tile à frente do personagem (direção em que ele está virado) ou no próprio tile. Abre/fecha os 2 tiles juntos. Não fecha se o personagem estiver em cima da porta ou indo para ela (mostra "Saia da porta para fechá-la").
 
 ### Desenho
 | Lado | Sprite | Área |
@@ -124,7 +124,7 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 |---|---|---|
 | `underground` | Enterrado e invisível, esperando ser visto. | não |
 | `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (8 quadros, 1 s). | sim |
-| `idle` | Parado por 1–4 s (`ZOMBIE_IDLE_TIME`). | sim |
+| `idle` | Pausa entre caminhadas (`ZOMBIE_IDLE_TIME`, hoje **0**: emenda direto na próxima caminhada). Cercado, sem direção livre, espera 0,1–0,3 s e tenta de novo. | sim |
 | `walk` | Sorteia uma direção livre e anda 1–4 tiles (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`). Depois volta a `idle`. | sim |
 | `dying` | Vida chegou a 0: toca a animação de surgir **ao contrário** (afunda de volta no chão, `ZOMBIE_DEATH_FPS`). Não leva mais dano. | não |
 | `dead` | Terminou de afundar: sai do jogo e conta em "Abatidos". | — |
@@ -142,7 +142,7 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 ## Combate (`combat.py`, `player.py`)
 
 ### Ataque do personagem
-- **Clique esquerdo** ou **J**: ataca com a faca na direção em que o personagem está virado (`Player.request_attack`).
+- **Espaço**: ataca com a faca na direção em que o personagem está virado (`Player.request_attack`). É o mesmo botão das portas: se há uma porta à frente (ou o personagem está numa), o Espaço abre/fecha a porta em vez de atacar (`Game.action`).
 - Animação de 9 quadros a `ATTACK_FPS` (≈ 0,4 s). Durante o ataque ele não anda nem vira. Pedido no meio de um passo: o ataque começa assim que ele chega no tile. Pedidos durante um ataque são ignorados (não empilham). Parado atacando recupera estamina como parado.
 - No quadro `ATTACK_HIT_FRAME` (5, quando aparece o rastro do golpe), `Player.update` devolve o **tile de impacto** (o tile à frente) — uma única vez por ataque.
 

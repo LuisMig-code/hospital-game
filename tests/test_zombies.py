@@ -96,12 +96,25 @@ class BehaviourTests(unittest.TestCase):
         others = [z for z in self.horde.zombies if z.room is not self.room]
         self.assertTrue(all(z.state == UNDERGROUND for z in others))
 
-    def test_wander_and_rest_inside_room(self):
+    def test_wander_inside_room_without_waiting(self):
+        """Com ZOMBIE_IDLE_TIME = 0 emendam uma caminhada na outra: só param
+        um instante entre caminhadas (ou um pouco mais se estiverem cercados)."""
         start = {id(z): z.tile for z in self.zs}
-        self.run_for(60, visible=self.room_tiles)
+        stints = {id(z): 0.0 for z in self.zs}
+        longest = 0.0
+        for _ in range(round(30 / DT)):
+            self.horde.update(DT, self.player, self.room_tiles)
+            self.check_invariants()
+            for z in self.zs:
+                if z.state == IDLE:
+                    stints[id(z)] += DT
+                    longest = max(longest, stints[id(z)])
+                else:
+                    stints[id(z)] = 0.0
         for z in self.zs:
-            self.assertGreater(z.time_in[IDLE], 1.0)     # ficou parado um tempo
-            self.assertGreater(z.time_in[WALK], 1.0)     # e também andou
+            total = z.time_in[IDLE] + z.time_in[WALK]
+            self.assertGreater(z.time_in[WALK] / total, 0.9)    # quase sempre andando
+        self.assertLessEqual(longest, 0.3 + 2 * DT)             # pior caso: cercado
         moved = sum(1 for z in self.zs if z.tile != start[id(z)])
         self.assertGreaterEqual(moved, len(self.zs) // 2)
 

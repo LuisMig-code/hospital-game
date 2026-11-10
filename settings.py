@@ -70,7 +70,7 @@ STAMINA_RECOVER_TO_RUN = 20     # ao zerar, fica "cansado" até recuperar isso
 ZOMBIE_SIZE = 64                # quadro de 32 px escalado 2x (pixel art nítida; ~ altura do personagem)
 ZOMBIES_PER_ROOM = (3, 5)       # mínimo e máximo de zumbis por sala
 ZOMBIE_SPEED = 45               # pixels por segundo (bem mais lento que o jogador)
-ZOMBIE_IDLE_TIME = (1.0, 4.0)   # segundos parado entre caminhadas
+ZOMBIE_IDLE_TIME = (0.0, 0.0)   # segundos parado entre caminhadas (0 = emenda uma caminhada na outra)
 ZOMBIE_WANDER_STEPS = (1, 4)    # tiles andados em cada caminhada
 ZOMBIE_ANIM_FPS = 6             # animação parado/andando
 ZOMBIE_EMERGE_FPS = 8           # animação saindo do chão (8 quadros = 1 s)

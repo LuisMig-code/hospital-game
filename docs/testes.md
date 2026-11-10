@@ -43,6 +43,9 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Piscar e barra de vida ligam no golpe e somem depois; números de dano sobem e somem.
 - Sprite de ataque: 9 quadros por direção, altura igual à do `idle`, `attack_left` é o espelho de `attack_right`, sem contorno magenta.
 
+### `tests/test_controls.py`
+- Espaço olhando para uma porta: abre/fecha e não ataca; sem porta por perto: ataca; dentro de uma porta aberta: não fecha nem ataca.
+
 ### `tests/test_fov.py`
 - A origem é sempre visível; nada fora do raio é visível.
 - Em sala aberta, o círculo inteiro é visível.
@@ -61,8 +64,9 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 
 ### `tests/test_zombies.py`
 - Em 60 seeds: cada sala com espaço tem de 3 a 5 zumbis, em tiles distintos de chão dentro da sala, todos enterrados e a mais de 2 tiles do spawn; a mesma seed gera os mesmos zumbis.
-- Ficam enterrados enquanto não são vistos; ao entrar na visão, saem do chão e depois ficam parados/andando; zumbis de outras salas continuam enterrados.
-- Simulando 60 s: nunca saem da sala, dois zumbis nunca ocupam o mesmo tile, nenhum entra no tile do personagem, e todos passam tempo parados e andando.
+- Ficam enterrados enquanto não são vistos; ao entrar na visão, saem do chão e depois começam a andar; zumbis de outras salas continuam enterrados.
+- Simulando 60 s: nunca saem da sala, dois zumbis nunca ocupam o mesmo tile, nenhum entra no tile do personagem, e se movem (mais da metade sai do tile inicial).
+- Sem pausa entre caminhadas: andam mais de 90% do tempo; parada mais longa só quando cercados (≤ 0,3 s).
 - Zumbi enterrado não bloqueia o personagem; fora do chão, bloqueia. Não acorda com o personagem em cima.
 - Sprite: quantidade de quadros por animação, tamanho 64×64, nenhum pixel magenta/roxo sobrando.
 
@@ -86,4 +90,4 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 venv\Scripts\python.exe main.py 42
 ```
 
-Confira: atacar com clique/J nas 4 direções (zumbis piscando, números de dano, barra de vida, zumbi afundando ao morrer, contador de abatidos), zumbis saindo do chão ao entrar numa sala e vagando sem atravessar o personagem, nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom suave pela roda do mouse (1x a 2x), R/G/V.
+Confira: atacar com Espaço nas 4 direções (zumbis piscando, números de dano, barra de vida, zumbi afundando ao morrer, contador de abatidos), zumbis saindo do chão ao entrar numa sala e vagando sem atravessar o personagem, nascer no canto superior esquerdo, Espaço abrindo/fechando portas, movimento alinhado ao grid, corrida e barra de estamina, névoa suave e luz tremulando, sombras, personagem semitransparente atrás de porta, zoom suave pela roda do mouse (1x a 2x), R/G/V.
