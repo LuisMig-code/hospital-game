@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-11 — Pegar kit do lado
+- O Espaço também pega um kit médico **colado** no personagem (8 direções, sem quina de parede), não só embaixo dele; o personagem vira para o kit. Preferência: embaixo, à frente, depois os outros lados.
+
 ## 2026-11-11 — Vídeo na troca de andar
 - Depois que as portas da saída fecham, toca em tela cheia o vídeo do elevador (portas abrindo para a luz, ~7,9 s, com som), com "Andar N" aparecendo no fim; Espaço/Enter pulam.
 - Quadros lidos com OpenCV (`opencv-python-headless`, nova dependência); som extraído para `elevator_video.wav` por `tools/extract_video_audio.py`. Sem OpenCV, volta a tela escura de antes.

@@ -33,7 +33,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 |---|---|
 | WASD / setas | Andar (um tile por vez; segurando, anda contínuo). **Duas teclas juntas andam na diagonal** (ex.: W+A). Parado, apertar outra direção primeiro só vira; segurando, anda em seguida |
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
-| Espaço | Zumbi colado → **ataca**. Senão, na frente do **elevador de saída** → entra. Senão, parado em cima de um **kit médico** → pega. Senão, porta à frente (ou embaixo) → abre/fecha. Senão → **ataca** com a faca na direção em que ele está virado (dano em área) |
+| Espaço | Zumbi colado → **ataca**. Senão, na frente do **elevador de saída** → entra. Senão, parado em cima ou do lado de um **kit médico** → pega. Senão, porta à frente (ou embaixo) → abre/fecha. Senão → **ataca** com a faca na direção em que ele está virado (dano em área) |
 | H | Usa um kit médico guardado (+2 de vida) |
 
 Objetivo: cada andar começa com o personagem saindo de um **elevador**; ache o **elevador de saída** (numa sala longe) e aperte **Espaço** na frente dele para ir ao próximo andar (vida e kits continuam). Morrer começa uma run nova no andar 1.

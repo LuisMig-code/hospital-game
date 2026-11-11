@@ -4,7 +4,7 @@ Uso:
     venv\\Scripts\\python.exe main.py            # seed aleatória
     venv\\Scripts\\python.exe main.py 12345      # seed específica (número ou texto)
 
-Controles: WASD/setas movem, Shift corre, Espaço ataca (zumbi colado) / pega o kit embaixo /
+Controles: WASD/setas movem, Shift corre, Espaço ataca (zumbi colado) / pega o kit embaixo ou do lado /
 abre/fecha a porta à frente / ataca, H usa o kit médico, roda do mouse dá zoom, R gera nova dungeon,
 G liga/desliga o grid, V liga/desliga a névoa, ESC sai.
 """
@@ -18,7 +18,7 @@ import settings as S
 from dungeon import FLOOR, generate
 from fov import Vision
 from lighting import FogLayer, Light
-from player import Player
+from player import DIRS, Player, _facing_for
 from combat import FloatingText, apply_attack, texts_for
 from elevators import ElevatorActor
 from video import FloorVideo
@@ -147,7 +147,7 @@ class Game:
         """Espaço, nesta ordem:
         1. zumbi colado no personagem → ataca (atacar tem preferência);
         2. parado na frente do elevador de saída → entra (próximo andar);
-        3. parado em cima de um kit médico → pega e guarda;
+        3. parado em cima ou do lado de um kit médico → pega e guarda;
         4. porta à frente (ou embaixo) → abre/fecha;
         5. senão → ataca na direção em que ele está virado.
         Levando dano, atacando, pegando/usando kit ou fora do jogo normal
@@ -161,8 +161,11 @@ class Game:
         if self.at_exit():
             self.enter_elevator()
             return
-        kit = self.medkit_at(p.tile) if p.target is None else None
-        if kit is not None and p.start_pickup():
+        kit = self.reachable_medkit() if p.target is None else None
+        if kit is not None and p.can_pickup():
+            if kit.tile != p.tile:             # kit do lado: vira para ele antes de pegar
+                p.facing = _facing_for(kit.tile[0] - p.tile[0], kit.tile[1] - p.tile[1])
+            p.start_pickup()
             self.medkits.remove(kit)
             p.medkits += 1
             self.show_message("Kit médico guardado  [H] usar")
@@ -255,6 +258,19 @@ class Game:
 
     def medkit_at(self, tile):
         return next((k for k in self.medkits if k.tile == tile), None)
+
+    def reachable_medkit(self):
+        """Kit que o personagem alcança: embaixo dele ou colado (8 direções,
+        sem quina de parede no meio). Preferência: embaixo, à frente, o resto."""
+        p = self.player
+        here = self.medkit_at(p.tile)
+        if here is not None:
+            return here
+        fx, fy = DIRS[p.facing]
+        front = self.medkit_at((p.tile[0] + fx, p.tile[1] + fy))
+        if front is not None:
+            return front
+        return next((k for k in self.medkits if touching(self.dungeon, p.tile, k.tile)), None)
 
     def use_medkit(self):
         """H: usa um kit médico (+2 de vida)."""

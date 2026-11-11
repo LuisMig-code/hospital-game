@@ -118,6 +118,39 @@ class SpaceOrderTests(unittest.TestCase):
         self.assertEqual(g.player.action, "pickup")
         self.assertFalse(g.player.attack_queued)
 
+    def test_kit_beside_player_is_collected_and_player_turns(self):
+        g = self.game
+        x, y = g.player.tile
+        for dx, dy, facing in ((1, 0, "right"), (0, 1, "down"), (1, 1, "right")):
+            if not g.dungeon.is_walkable(x + dx, y + dy):
+                continue
+            g.player = Player(g.anims, (x, y))
+            g.player.facing = "up"
+            kit = MedKit((x + dx, y + dy))
+            g.medkits = [kit]
+            g.action()
+            self.assertEqual(g.medkits, [], (dx, dy))           # pegou o kit do lado
+            self.assertEqual(g.player.medkits, 1)
+            self.assertEqual(g.player.facing, facing)           # virou para ele
+            self.assertEqual(g.player.action, "pickup")
+
+    def test_kit_two_tiles_away_is_not_collected(self):
+        g = self.game
+        x, y = g.player.tile
+        g.medkits = [MedKit((x + 2, y))]
+        g.action()
+        self.assertEqual(len(g.medkits), 1)
+        self.assertEqual(g.player.medkits, 0)
+        self.assertTrue(g.player.attack_queued)                 # sem kit ao alcance: ataca
+
+    def test_kit_under_player_has_priority(self):
+        g = self.game
+        x, y = g.player.tile
+        under, beside = MedKit((x, y)), MedKit((x + 1, y))
+        g.medkits = [beside, under]
+        g.action()
+        self.assertEqual(g.medkits, [beside])
+
     def test_zombie_touching_attacks_instead_of_collecting(self):
         g = self.game
         x, y = g.player.tile

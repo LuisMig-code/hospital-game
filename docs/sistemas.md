@@ -249,7 +249,7 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 1. personagem ocupado (levando dano, atacando, pegando ou usando kit) ou chegando/saindo de elevador → nada;
 2. **zumbi colado** (fora do chão e vivo, em qualquer uma das 8 direções, sem quina de parede no meio — `zombies.touching`) → **ataca**, mesmo com kit embaixo ou porta à frente;
 3. parado na **frente do elevador de saída** → entra (próximo andar; veja "Elevadores e andares");
-4. **parado em cima de um kit** → pega: o kit sai do chão, entra na conta (**sem limite**) e toca a animação de pegar e guardar (`pickup_<direção>`, 6 quadros a `PICKUP_FPS`, sem andar nem atacar). Mensagem "Kit médico guardado [H] usar";
+4. **parado em cima ou do lado de um kit** (colado em qualquer uma das 8 direções, sem quina de parede no meio) → pega — preferência para o kit embaixo, depois o da frente; se o kit está do lado, o personagem vira para ele antes: o kit sai do chão, entra na conta (**sem limite**) e toca a animação de pegar e guardar (`pickup_<direção>`, 6 quadros a `PICKUP_FPS`, sem andar nem atacar). Mensagem "Kit médico guardado [H] usar";
 5. porta à frente / embaixo → abre/fecha;
 6. senão → ataca.
 
@@ -280,6 +280,6 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 - **Vídeo** (`video.py`): o pygame não toca vídeo, então `FloorVideo` lê os quadros do `.mp4` com o OpenCV, um por vez, no ritmo do vídeo (24 fps, ~1,7 ms por quadro), converte BGR → RGB e mostra numa `Surface`. O som (AAC dentro do `.mp4`, que o mixer do pygame não lê) foi extraído uma vez para `elevator_video.wav` (`tools/extract_video_audio.py`) e toca no mixer junto com o vídeo; pular o vídeo para o som.
 - **Próximo andar**: dungeon nova com seed derivada da run (`"<seed da run>-<andar>"`), **mantendo vida e kits**.
 - **Game over**: a run acaba; depois de `GAME_OVER_TIME` começa uma **run nova com seed aleatória**, andar 1, vida cheia e sem kits. **R** também começa uma run nova.
-- Ordem do Espaço: zumbi colado → ataca; **frente da saída → entra no elevador**; kit embaixo → pega; porta → abre/fecha; senão ataca. Durante a chegada e a saída o Espaço não faz nada.
+- Ordem do Espaço: zumbi colado → ataca; **frente da saída → entra no elevador**; kit embaixo ou do lado → pega; porta → abre/fecha; senão ataca. Durante a chegada e a saída o Espaço não faz nada.
 - Os elevadores são desenhados junto com personagem, zumbis e móveis, ordenados pela base (a linha logo abaixo da parede), antes da névoa: a saída só aparece depois de descoberta.
 - HUD: "Andar N" no começo da linha de cima (a seed mostrada é a da run).
