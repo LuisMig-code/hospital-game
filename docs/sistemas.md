@@ -2,6 +2,8 @@
 
 ## Geração da dungeon (`dungeon.py`)
 
+> Depois das salas, corredores e portas, cada sala recebe um tema e móveis — veja "Salas temáticas e móveis".
+
 Algoritmo **BSP (Binary Space Partitioning)**, determinístico pela seed (`random.Random(seed)`, sem estado global).
 
 1. O mapa (80×60 tiles) menos 1 tile de borda é dividido recursivamente em "folhas". Corta sempre a dimensão maior quando a proporção passa de 1,25; folhas grandes sempre se dividem, as médias com 75% de chance. Tamanho mínimo de folha: `MIN_LEAF = 14`.
@@ -37,6 +39,8 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 | cima | porta dupla de frente, 2×2 tiles | tiles da porta + tile de cima (igual à parede alta, com pilares dos lados) |
 | baixo | porta dupla achatada, 2×1 tiles | tiles da porta |
 | esquerda / direita | porta dupla girada 90° (base virada para dentro da sala), 1×2 tiles | tiles da porta |
+
+O desenho da porta fechada depende do tema da sala dona dela (`Door.room`): padrão, com sangue (Emergência), vidro quebrado (Depósito) ou cofre (Necrotério); aberta é sempre a mesma porta dupla aberta.
 
 `render_map` guarda em `door.base` o pedaço do mapa por baixo de cada porta. `draw_door` restaura esse pedaço e desenha o sprite do estado atual, atualizando só aquela área do mapa pré-renderizado.
 
@@ -91,19 +95,50 @@ Resultado típico: ~17 portas por dungeon, nos 4 lados.
 - **Transição suave**: a cada quadro o zoom anda uma fração da distância até o alvo (`1 - e^(-ZOOM_SMOOTHING·dt)`), independente do FPS — chega a ~95% em 0,25 s e encaixa no alvo quando a diferença fica mínima.
 - O mundo é desenhado numa superfície de tamanho tela ÷ zoom e escalado para a tela: em 1x sem escala, em exatamente 2x com `scale` (pixels nítidos) e nos zooms fracionários (1,3x, 1,7x...) com `smoothscale`, para não serrilhar (custa ~1–2 ms). A câmera continua centrada no personagem.
 
-## Renderização do mapa (`tileset.py`)
+## Salas temáticas e móveis (`themes.py`, `furnish.py`)
 
-O mapa inteiro é desenhado uma vez por dungeon (`render_map`) a partir das peças do tileset (veja [assets.md](assets.md)):
+### Temas
+Depois das portas, `dungeon.generate` chama `furnish` (com um `Random` próprio, derivado da seed). Cada sala sorteia um tema; a sala do spawn (ou a mais perto dele, se o spawn cair num corredor) é sempre a **Recepção**. O tema decide parede, porta, piso e móveis:
 
-- **Piso**: o azulejo tem 3×3 placas, e cada placa vira 1 tile; cada tile usa a fatia `(x % 3, y % 3)`. Cada bloco 3×3 tem 8% de chance de ser a versão **com sangue**.
-- **Parede frontal** (parede com chão logo abaixo), processada por trechos horizontais contínuos:
-  - tile de cima também é parede → **parede alta** de 2 tiles (desenhada no tile da frente e no de cima), com **pilar** nas pontas do trecho, **ventilação** (2 colunas, 15% de chance) e, no resto, faixas lisas sorteadas entre 4 variações para a rachadura não se repetir;
-  - tile de cima é chão (parede de 1 tile de espessura) → **parede baixa**, com 1 tile de altura.
+| Tema | Parede | Porta fechada | Piso | Móveis (colisão) | Detalhes no chão |
+|---|---|---|---|---|---|
+| Recepção | branca rachada (0) | padrão | bege ou xadrez | sofás de espera, mesas com computador, cadeiras, poltrona, lixeiras, armário | azulejos soltos, vidro |
+| Enfermaria | creme com trilho de cortina (2) | padrão | liso (+ sujeira, gotas, pegadas) | camas, criados-mudos, suportes de soro, cortinas, biombos, cadeira de rodas | bandagens, luvas, panos |
+| Emergência | com sangue (1) | com sangue | liso (+ poças, rastros, mão de sangue) | macas, carrinhos de emergência, monitores, soro, pia, cadeira de rodas caída, cama quebrada | seringas, panos, bolsas de soro, vidro |
+| Centro cirúrgico | azulejo azul (3) | padrão | azul | mesa de cirurgia + foco + mesa de instrumentos, anestesia, ventilador, monitores, armários de vidro, oxigênio | seringas, luvas, panos |
+| Necrotério | concreto enferrujado (4) | cofre | cinza escuro | gavetas de cadáver, mesas de autópsia, maca coberta, lixo hospitalar, estantes | saco de corpo, luvas, panos |
+| Depósito | com mofo (5) | vidro quebrado | liso (+ mofo, rachaduras, queimado, poça, concreto) | estantes, armários/lockers, caçambas, caixas, caixotes, entulho, móveis caídos | azulejos soltos, vidro, forro caído |
+
+Corredores: parede padrão (0), piso liso com detalhes de vez em quando (rachadura, pegadas, poça, papéis, sangue, ralo, vidro). O nome do tema aparece no HUD quando o personagem entra na sala.
+
+### Onde vão os móveis
+Densidade moderada: cada sala ocupa no máximo `FURNITURE_DENSITY` (24%) dos tiles com móveis (em 100 seeds, média de ~11%).
+1. **Parede de cima** (a que aparece): móveis do tema lado a lado, com vãos sorteados.
+2. **Grupos no meio** das salas grandes (≥ 8×7): 1 (ou 2 nas salas ≥ 110 tiles), ex.: mesa de cirurgia com foco e mesa de instrumentos, fileira de cadeiras, maca com soro. O primeiro móvel do grupo precisa de 1 tile livre em volta.
+3. **Laterais**: móveis de 1 tile de largura (criado-mudo, soro, estante, cama de pé...).
+4. **Soltos**: 0–2 móveis 1×1 pela sala (cadeira caída, entulho...), com 1 tile livre em volta.
+5. **Detalhes no chão** (sem colisão): 1–3 por sala, desenhados no mapa.
+
+Regras de cada móvel (se falhar, tenta outra posição ou outro móvel): pegada inteira no chão da sala; a mais de 2 tiles de qualquer porta e do spawn; não encosta em nenhuma abertura da sala (chão na linha da parede); e **não fecha passagem** — depois de colocar, uma busca em largura confere que os vizinhos livres do móvel continuam ligados entre si pelo chão da sala (com as aberturas). Por isso todo chão sem móvel do mapa continua alcançável a partir do spawn (testado em 100 seeds).
+
+### Colisão
+- `Dungeon.blocked` guarda os tiles com móvel; `is_walkable` recusa esses tiles. Como personagem (inclusive a regra de quina na diagonal), zumbis (passo, perseguição, empurrões), spawn de zumbis e de kits usam `is_walkable`, todos respeitam os móveis sem código a mais.
+- Móveis **não bloqueiam a visão**: a névoa usa `is_transparent` (chão que não é porta fechada).
+
+## Renderização do mapa (`tileset.py`, `props.py`)
+
+O mapa inteiro é desenhado uma vez por dungeon (`render_map`) a partir das peças novas (veja [assets.md](assets.md)):
+
+- **Piso**: blocos de 3×3 tiles; cada tile usa a fatia `(x % 3, y % 3)` do bloco. Cada bloco 3×3 do grid usa o piso base da sala (`Room.floor`) ou do corredor e, com `FLOOR_DECAL_CHANCE` (22%), um bloco com detalhe do tema (só nos temas de piso liso, porque os blocos de detalhe têm fundo liso).
+- **Detalhes no chão** dos props sem colisão: desenhados no mapa logo depois do piso.
+- **Parede frontal** (parede com chão logo abaixo), por trechos horizontais contínuos **do mesmo estilo** (o da sala que fica embaixo; corredor = estilo 0):
+  - tile de cima também é parede → **parede alta** de 2 tiles, com **pilar** nas pontas do trecho, um **detalhe** de 2 colunas de vez em quando (`WALL_DETAIL_CHANCE`, 18%: parede cheia com rachadura/sangue/mofo, janela, ventilação, placa, armário de remédios, luminária, canos; na parede branca também buraco, entulho, lâmpada vermelha, persiana, extintor e placa) e, no resto, 4 faixas lisas sorteadas;
+  - tile de cima é chão → **parede baixa**, 1 tile de altura.
 - **Demais paredes** (topo, laterais, miolo): cor sólida `COLOR_WALL_TOP`.
-- As variações (sangue, ventilação, faixas) usam um `Random` derivado da seed, então são as mesmas a cada vez.
+- **Portas**: porta dupla fechada do tema da sala dona da porta (`Door.room`) e a porta dupla aberta para todas (veja "Portas").
+- As variações usam um `Random` derivado da seed: a mesma seed gera exatamente a mesma imagem.
+- **Móveis** (com colisão) **não** vão no mapa: são desenhados a cada quadro junto com personagem, zumbis e kits, ordenados pela base da pegada (`PropArt.anchor`) — o personagem atrás de uma maca fica com as pernas escondidas por ela; à frente, passa por cima. Só os móveis na área da câmera são desenhados, antes da névoa.
 - O grid é desenhado só sobre o piso, para não cortar a arte das paredes.
-
-- **Portas**: desenhadas por cima, depois das paredes (veja "Portas" acima). Para decidir o desenho das paredes, um tile de porta conta como sólido — por isso a parede ao lado de uma porta de cima termina em **pilar**.
 
 ## Efeitos visuais (`lighting.py`, `tileset.py`, `player.py`, `main.py`)
 

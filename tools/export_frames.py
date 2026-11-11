@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pygame  # noqa: E402
 
+import settings as S  # noqa: E402
 from settings import ASSETS  # noqa: E402
 from sprites import load_animations, slice_sheet  # noqa: E402
 from settings import CHARACTER_SHEET  # noqa: E402
@@ -51,26 +52,37 @@ def main():
 
 
 def export_tileset():
-    """Salva cada peça do tileset do hospital e um preview com todas."""
-    from tileset import load_pieces
+    """Salva os blocos de piso, as peças de parede e as portas (cenário novo),
+    e os props das salas temáticas com um preview numerado."""
+    from props import load_prop_images, slice_sheet
+    from tileset import FLOOR_BLOCKS, load_door_pieces, load_floor_blocks, load_wall_pieces
 
     out = ASSETS / "background" / "pieces"
     out.mkdir(parents=True, exist_ok=True)
-    pieces = load_pieces()
-    pad = 8
-    width = sum(p.get_width() + pad for p in pieces.values())
-    height = max(p.get_height() for p in pieces.values())
-    preview = pygame.Surface((width, height))
-    preview.fill((255, 0, 255))
-    x = 0
-    for name, img in pieces.items():
-        pygame.image.save(img, str(out / f"{name}.png"))
-        preview.blit(img, (x, 0))
-        x += img.get_width() + pad
-        print(f"{name:20s} {img.get_size()}")
-    pygame.image.save(preview, str(out / "preview.png"))
-    print(f"Peças do tileset salvas em {out}")
+    for name, img in load_floor_blocks().items():
+        pygame.image.save(img, str(out / f"floor_{name}.png"))
+    for (r, c), img in load_wall_pieces().items():
+        pygame.image.save(img, str(out / f"wall_{r}_{c}.png"))
+    for c, img in load_door_pieces().items():
+        pygame.image.save(img, str(out / f"door_{c}.png"))
+    print(f"{len(FLOOR_BLOCKS)} blocos de piso, paredes e portas salvos em {out}")
 
+    # props: cada sheet com as peças numeradas (linha,coluna) e cada prop do catálogo
+    font = pygame.font.SysFont("consolas", 18, bold=True)
+    pout = ASSETS / "cenario" / "pieces"
+    pout.mkdir(parents=True, exist_ok=True)
+    for key, path in S.PROP_SHEETS.items():
+        sheet = pygame.image.load(str(path))
+        preview = pygame.Surface(sheet.get_size())
+        preview.fill((70, 110, 80))
+        preview.blit(sheet, (0, 0))
+        for (r, c), rect in slice_sheet(sheet).items():
+            pygame.draw.rect(preview, (255, 255, 0), rect, 2)
+            preview.blit(font.render(f"{r},{c}", True, (255, 255, 0), (0, 0, 0)), rect.topleft)
+        pygame.image.save(preview, str(pout / f"preview_{key}.png"))
+    for name, img in load_prop_images().items():
+        pygame.image.save(img, str(pout / f"{name}.png"))
+    print(f"Props salvos em {pout}")
 
 
 def export_zombie():

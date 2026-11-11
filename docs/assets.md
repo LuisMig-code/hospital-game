@@ -80,30 +80,42 @@ O sheet só tem `idle` de frente. Para parado olhando para os lados/costas, `loa
 
 Os dois sheets do personagem passam por `_load_grid_animation`: o "chão" de cada linha é o pixel opaco mais baixo dela; cada quadro vai do topo do desenho até esse chão, é **centralizado pelo cabelo** e escalado para o último quadro de frente (de pé) ter a altura do `idle`. `tools/export_frames.py` salva tudo em `assets/personagem/medkit_frames/` (ignorada pelo git).
 
-## Tileset do hospital — `assets/background/hospital-tiles.png`
+## Piso — `assets/background/Seamless Grungy Hospital Floor Tileset.png`
 
-- 530×471 px, RGBA, fundo transparente. **Não é uma grade uniforme**: são 10 peças soltas de tamanhos diferentes, cada uma com um contorno roxo.
+- 1774×887 px, grade fixa **8×4 blocos** (221,75 px); cada bloco tem 3×3 placas e vira **3×3 tiles** (96×96 px) — `load_floor_blocks`.
+- Nomes (`tileset.FLOOR_BLOCKS`), linha a linha: `plain`, `cracked`, `broken`, `footprints`, `puddle`, `papers`, `plain_streak`, `blood_smear` / `beige`, `blue`, `checker`, `dark`, `slime`, `yellow_line`, `grate`, `concrete` / `blood_drops`, `blood_splat`, `blood_hand`, `blood_trail`, `dirt`, `blood_crack`, `blood_dried`, `mold` / `metal_bar`, `drain`, `hatch`, `hole`, `carpet`, `burnt`, `glass_floor`, `blood_bag`.
+- Sem uso por enquanto: `hole` (parece intransponível), `yellow_line`, `carpet`, `metal_bar`, `hatch`, `blood_bag`, `plain_streak` (tem o começo do rastro de sangue do bloco vizinho).
 
-| Linha | Peças (esquerda → direita) |
-|---|---|
-| 1 | `floor` (azulejo 3×3), `floor_blood` (azulejo com sangue) |
-| 2 | `wall_vent` (parede com ventilação), `wall_low` (parede baixa), `wall_pillar_left`, `wall_pillar_right` |
-| 3 | `door_double_closed`, `door_double_open`, `door_single_left`, `door_single_right` |
+## Paredes — `assets/background/Pixel Hospital Wall Tileset.png`
 
-Em uso: as **portas duplas** (fechada e aberta), em 4 versões — de frente (parede de cima), achatada (parede de baixo) e giradas 90° (laterais). As portas simples (`door_single_*`) ainda **não são usadas**: todas as portas do mapa têm 2 tiles.
+- 1086×1448 px, **fundo magenta** (vira transparente por `Mask.from_threshold`; a franja arroxeada na borda das peças vira traço escuro). Peças achadas pela projeção do alpha: **8 linhas × 6 peças** — `load_wall_pieces`.
+- Linhas 0–5 = 6 estilos (0 branca rachada, 1 com sangue, 2 creme com trilho de cortina, 3 azulejo azul, 4 concreto enferrujado, 5 com mofo). Colunas: parede cheia (com detalhe do estilo), parede baixa, com pilar à esquerda, com pilar à direita, com janela, com detalhe (ventilação, placa, armário, luminária, grade, canos).
+- Linha 6: cantos (sem uso). Linha 7: buraco, entulho, lâmpada vermelha, persiana, extintor, placa — detalhes extras do estilo 0.
+- `Tileset.walls[estilo]`: `plain` (4 faixas 32×64 do miolo das peças com pilar), `left`/`right` (pilares, 64×64; usa a coluna da ponta), `details` (peças de 2 colunas, 64×64, cortando 2,5% de cada lado para o contorno não virar uma risca), `low` (64×32). As peças são recortadas pelo topo da parede medido longe do pilar (a ponta do pilar sobe acima).
 
-**Como o recorte funciona** (`tileset.py`):
+## Portas — `assets/background/Industrial Teal Door Tile Sprite Sheet.png`
 
-1. `find_pieces`: encontra os **componentes conectados** do alpha (`Mask.connected_components`) e descarta ruídos com menos de 400 px. Agrupa as peças em linhas pelo centro Y e ordena por X, chegando aos nomes da tabela. Se não encontrar exatamente 2 + 4 + 4 peças, gera um erro claro.
-2. `clean_outline`: deixa transparentes os pixels **roxos** do contorno (vermelho e azul bem acima do verde) e recorta a peça para o que sobrou. Cortar uma margem fixa não bastava, porque o contorno também passa no degrau entre a parede e o pilar.
-3. `Tileset` escala as peças para o grid:
-   - piso: 96×96 px (3×3 tiles);
-   - paredes altas: 64 px de altura, recortadas pelo **topo da parede** (e não pela ponta do pilar) para os topos ficarem alinhados, com a largura arredondada para um múltiplo de 32;
-   - parede lisa: 4 faixas de 1 coluna tiradas do miolo das paredes com pilar;
-   - parede baixa: 32 px de altura;
-   - portas duplas: 64×64 (cima), 64×32 (baixo), 32×64 girada ±90° (laterais), fechada e aberta (`Tileset.door[lado][aberta]`).
+- 1774×887 px, fundo preto, cada porta com **contorno magenta**; grade 8×4. Recorte: retângulo do contorno magenta em cada célula, encolhido 5 px de cada lado — `load_door_pieces`.
+- Em uso, só a linha 0 (portas duplas): fechada padrão (col. 0), com sangue (1, Emergência), vidro quebrado (6, Depósito), cofre (7, Necrotério) e a **aberta** (3, todas). Sem uso: quebrada, acorrentada, com tábuas (linha 0) e as portas simples/elevador/necrotério das linhas 1–3.
+- `Tileset.door[variante][lado][aberta]`: 64×64 (cima), 64×32 (baixo), 32×64 girada ±90° (laterais).
+
+## Props das salas — `assets/cenario/*.png`
+
+Três sheets com fundo transparente (e uma névoa de alpha baixo em volta das peças):
+
+| Sheet (`PROP_SHEETS`) | Arquivo | Grade |
+|---|---|---|
+| `equip` | `Detailed Hospital Equipment Sprite Sheet.png` | 6×6: camas, macas, cadeiras de rodas, criado-mudo/soro/cortina, monitores/carrinhos/oxigênio/ventilador, mesa de cirurgia/foco/instrumentos |
+| `furn` | `Hospital Furniture Sprite Sheet on Transparent Background.png` | 9/8/10/9/11 por linha: camas, macas, soro, cortinas / cadeiras, sofás, poltrona / armários, carrinhos, criados-mudos, pia / monitores, anestesia, mesas com computador, estantes / biombos, lixeiras, oxigênio, foco, maca de exame, luminária |
+| `weath` | `Weathered Medical Facility Prop Sprite Sheet.png` | 7/8/8/8/8/8: gavetas de cadáver, mesas de autópsia, saco de corpo, maca coberta / móveis caídos, entulho, caixas / lixo hospitalar, luvas, seringas, bandagens / caixotes, lockers, armários, caçambas / luminárias / escadas e passagens bloqueadas |
+
+- Recorte (`props.slice_sheet`): linhas pela projeção do alpha ≥ 250, colunas pela projeção do alpha ≥ 220 com vãos de 3 px (separa peças bem próximas, como as duas macas). A névoa (alpha < 70) é apagada e a peça recortada no desenho.
+- `themes.PROPS` dá a cada prop usado: sheet, (linha, coluna), largura na tela, pegada em tiles e se tem colisão. Ex.: cama de pé 1×2 (40 px), armário alto 2×1 (50 px de largura, ~2 tiles de altura), locker 2×1 (46 px), sofá 3×1 (92 px), mesa de cirurgia 2×1 (70 px), gaveteiro de necrotério 3×1 (90 px), cadeira 1×1 (24 px). O desenho fica com o meio da base no meio da base da pegada e cresce para cima (vista 3/4).
+- Sem uso: foco de teto, luminárias de parede e tubos (são de parede/teto), escadas e passagens bloqueadas.
 
 > Bug contornado: no pygame-ce 2.5.8 (Windows), `mask.from_surface` numa subsurface de 1 px de largura causa um *access violation*. Por isso `_crop_to_wall` lê os pixels da coluna diretamente.
+
+> O tileset antigo (`assets/background/hospital-tiles.png`) continua no repositório, mas não é mais usado.
 
 ## Conferindo os recortes
 
@@ -113,15 +125,18 @@ venv\Scripts\python.exe tools\export_frames.py
 
 Gera:
 - `assets/personagem/frames/<animação>_<i>.png` e `preview.png` (todos os frames com borda vermelha);
-- `assets/background/pieces/<peça>.png` e `preview.png`.
+- `assets/background/pieces/`: blocos de piso (`floor_<nome>.png`), peças de parede (`wall_<linha>_<coluna>.png`) e portas (`door_<coluna>.png`);
+- `assets/cenario/pieces/`: cada prop do catálogo (`<nome>.png`) e um `preview_<sheet>.png` com todas as peças numeradas (linha,coluna) — use para achar os índices de `themes.PROPS`;
+- quadros de zumbi, ataque, dano e kit médico nas pastas de cada um.
 
-As duas pastas estão no `.gitignore`, porque o jogo faz os recortes sozinho ao abrir.
+Essas pastas estão no `.gitignore`, porque o jogo faz os recortes sozinho ao abrir.
 
 ## Adicionando assets novos
 
 - `tools/export_frames.py` também salva os quadros de ataque em `assets/personagem/attack_frames/` (ignorada no git).
 - **Novo sprite sheet com o mesmo layout**: troque `CHARACTER_SHEET` em `settings.py`. Se a ordem das linhas mudar, ajuste `ROW_NAMES` em `sprites.py`.
-- **Novo tileset**: se o número de peças por linha mudar, ajuste `PIECE_ROWS` em `tileset.py`. O teste `test_finds_all_pieces_in_order` avisa se a detecção não bater.
+- **Novo prop**: rode `tools/export_frames.py`, ache o (linha, coluna) no `preview_<sheet>.png` e adicione em `themes.PROPS` (largura na tela, pegada, colisão); depois coloque o nome nas listas do tema (`top`, `side`, `center`, `loose` ou `scatter`). `tests/test_furnish.py` confere o recorte e as regras.
+- **Novo tema**: adicione um `Theme` em `themes.THEMES` (estilo de parede 0–5, porta, pisos e props).
 
 ## Zumbi — `assets/monster/zombie_spritesheet_32x32.png`
 

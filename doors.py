@@ -18,6 +18,7 @@ DIRS = {"right": (1, 0), "left": (-1, 0), "up": (0, -1), "down": (0, 1)}
 class Door:
     tiles: list                 # 2 tiles contíguos, na linha da parede
     side: str                   # lado da sala: top, bottom, left, right
+    room: object = None         # sala dona da porta (o tema escolhe o desenho)
     open: bool = False
     base: object = field(default=None, repr=False)  # pedaço do mapa por baixo (desenho)
 
@@ -75,7 +76,7 @@ def place_doors(dungeon, rng):
                     # estreita para 2: uma das pontas vira parede
                     drop = run.pop(0) if rng.random() < 0.5 else run.pop()
                     dungeon.grid[drop[1]][drop[0]] = WALL
-                door = Door(tiles=list(run), side=side)
+                door = Door(tiles=list(run), side=side, room=room)
                 dungeon.doors.append(door)
                 for t in run:
                     dungeon.door_at[t] = door

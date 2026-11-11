@@ -25,14 +25,17 @@ from sprites import (load_animations, load_attack_animations, load_damage_animat
                      load_medkit_item, load_zombie_animations)
 from zombies import Horde, touching
 from doors import try_toggle
+from props import PropArt
+from themes import THEMES
 from tileset import Tileset, bake_wall_shadows, door_rect, draw_door, init_doors, render_map
 
 
-def build_map_surface(dungeon, tiles=None):
-    """Pré-renderiza o mapa inteiro (tiles não mudam). Usa a arte do tileset;
-    sem tileset, desenha com cores sólidas (verde/cinza)."""
+def build_map_surface(dungeon, tiles=None, props=None):
+    """Pré-renderiza o mapa inteiro (tiles não mudam). Usa a arte do tileset
+    (piso, paredes, portas e detalhes de chão dos props); sem tileset,
+    desenha com cores sólidas (verde/cinza)."""
     if tiles is not None:
-        return render_map(dungeon, tiles)
+        return render_map(dungeon, tiles, props)
     surf = pygame.Surface((dungeon.width * S.TILE, dungeon.height * S.TILE))
     for y, row in enumerate(dungeon.grid):
         for x, cell in enumerate(row):
@@ -78,9 +81,10 @@ class Game:
         self.light = Light(round(math.sqrt(r * r + r) * S.TILE))   # mesmo raio de fov.in_radius
         try:
             self.tiles = Tileset()
-        except (pygame.error, FileNotFoundError, ValueError) as err:
+            self.props = PropArt()
+        except (pygame.error, FileNotFoundError, ValueError, KeyError) as err:
             print(f"Tileset não carregado ({err}); usando cores sólidas.")
-            self.tiles = None
+            self.tiles = self.props = None
         self.show_grid = True
         self.show_fog = True
         self.message, self.message_until = "", 0
@@ -90,7 +94,8 @@ class Game:
 
     def new_level(self, seed):
         self.dungeon = generate(seed, S.MAP_W, S.MAP_H)
-        self.map_surf = build_map_surface(self.dungeon, self.tiles)
+        self.map_surf = build_map_surface(self.dungeon, self.tiles, self.props)
+        self.current_room = None           # sala onde o personagem está (mostra o nome ao entrar)
         self.grid_surf = build_grid_surface(self.dungeon)
         self.player = Player(self.anims, self.dungeon.spawn)
         # Zumbis enterrados nas salas (longe do spawn); saem do chão quando vistos
@@ -164,6 +169,14 @@ class Game:
             self.show_message("Tem um zumbi na porta!")
         return result
 
+    def update_room(self):
+        """Ao entrar numa sala, mostra o nome do tema dela."""
+        room = self.dungeon.room_at(self.player.pixel_tile())
+        if room is not self.current_room:
+            self.current_room = room
+            if room is not None and room.theme in THEMES:
+                self.show_message(THEMES[room.theme].name, 2.0)
+
     def update_vision(self, force=False):
         # Tile onde o personagem está desenhado (avança no meio do passo)
         origin = (int(self.player.x // S.TILE), int(self.player.y // S.TILE))
@@ -226,10 +239,17 @@ class Game:
             pygame.transform.smoothscale(view, size, self.screen)
 
     def draw_actors(self, view, cam):
-        """Personagem e zumbis ordenados pela altura dos pés: quem está mais
-        embaixo na tela é desenhado por último (fica na frente). Com a névoa
-        ligada, só aparecem os zumbis que o personagem está vendo."""
+        """Personagem, zumbis, kits e móveis ordenados pela altura dos pés (a
+        base, nos móveis): quem está mais embaixo na tela é desenhado por
+        último (fica na frente) — o personagem passa por trás de uma estante.
+        Com a névoa ligada, só aparecem os zumbis que o personagem está vendo;
+        kits e móveis ficam embaixo da névoa (escurecidos fora da visão)."""
         actors = [(self.player.feet()[1], lambda: self.player.draw(view, cam))]
+        if self.props is not None:   # móveis: só os que aparecem na tela
+            view_rect = pygame.Rect(cam, view.get_size())
+            for pp in self.dungeon.props:
+                if self.props.rect(pp).colliderect(view_rect):
+                    actors.append((self.props.anchor(pp)[1], lambda pp=pp: self.props.draw(view, cam, pp)))
         for k in self.medkits:   # kits: a névoa por cima esconde/escurece os fora da visão
             actors.append((k.feet_y(), lambda k=k: k.draw(view, cam, self.medkit_frames, self.time)))
         for z in self.horde.active():
@@ -427,6 +447,7 @@ class Game:
             self.texts.append(FloatingText(p.x, p.feet()[1] - S.PLAYER_SPRITE_HEIGHT, f"+{S.MEDKIT_HEAL}",
                                            (110, 235, 110)))
         self.time += dt
+        self.update_room()
         self.light.update(dt)
         self.update_zoom(dt)
         self.update_vision()

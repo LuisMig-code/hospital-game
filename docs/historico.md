@@ -2,6 +2,15 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-11 — Armários maiores
+- Armários altos (de vidro, de metal, enferrujado), lockers e armários baixos aumentados: agora ocupam 2 tiles de largura e os altos ficam com ~2 tiles de altura, mais altos que o personagem. Por isso só vão encostados na parede de cima (nas laterais só entram móveis de 1 tile).
+
+## 2026-11-11 — Salas temáticas, cenário novo e móveis com colisão
+- Piso, paredes e portas trocados pelos sheets novos (o `hospital-tiles.png` deixou de ser usado): piso em blocos 3×3 com 32 variações, 6 estilos de parede com pilares, janelas e detalhes, portas duplas por tema.
+- 6 temas de sala: **Recepção** (sempre a do spawn), **Enfermaria**, **Emergência**, **Centro cirúrgico**, **Necrotério** e **Depósito**, cada um com parede, porta, piso e móveis próprios; o nome aparece no HUD ao entrar.
+- ~95 props recortados dos 3 sheets de cenário: móveis encostados nas paredes, grupos no meio das salas grandes, alguns soltos e detalhes no chão. Densidade moderada (≤ 24% da sala), nunca perto de portas ou do spawn e **nunca fechando passagem**.
+- **Colisão**: personagem e zumbis não atravessam móveis; os móveis não bloqueiam a visão. O personagem passa por trás dos móveis (desenho ordenado pela base).
+
 ## 2026-11-11 — Kit médico
 - 3 sprites novas recortadas: kit girando (com brilho), personagem pegando e guardando o kit, personagem usando o kit.
 - Cada sala tem **40%** de chance de ter um kit **flutuando** no chão.

@@ -43,25 +43,25 @@ def compute_fov(dungeon, origin, radius):
             if not (0 <= target[0] < dungeon.width and 0 <= target[1] < dungeon.height):
                 continue
             path = list(_line(origin, target))
-            if all(dungeon.is_walkable(x, y) for x, y in path[1:-1]):
+            if all(dungeon.is_transparent(x, y) for x, y in path[1:-1]):
                 visible.add(target)
 
     # Paredes (e portas fechadas) vizinhas de um chão visível também são
     # visíveis. Sem isso, olhando ao longo de uma parede, a linha de visão
     # "raspa" na própria parede e só os primeiros tiles dela aparecem.
-    for x, y in [t for t in visible if dungeon.is_walkable(*t)]:
+    for x, y in [t for t in visible if dungeon.is_transparent(*t)]:
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):
                 n = (x + dx, y + dy)
                 if (0 <= n[0] < dungeon.width and 0 <= n[1] < dungeon.height
-                        and not dungeon.is_walkable(*n)):
+                        and not dungeon.is_transparent(*n)):
                     visible.add(n)
 
     # Paredes altas ocupam 2 tiles: a face frontal (parede com chão abaixo)
     # e o tile de cima. Se a face é visível, a parte de cima também é.
     for x, y in list(visible):
-        if (not dungeon.is_walkable(x, y) and dungeon.is_walkable(x, y + 1)
-                and y > 0 and not dungeon.is_walkable(x, y - 1)):
+        if (not dungeon.is_transparent(x, y) and dungeon.is_transparent(x, y + 1)
+                and y > 0 and not dungeon.is_transparent(x, y - 1)):
             visible.add((x, y - 1))
         # Porta na parede de cima da sala também é desenhada com 2 tiles
         door = getattr(dungeon, "door_at", {}).get((x, y))

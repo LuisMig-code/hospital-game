@@ -1,4 +1,5 @@
-"""Geração procedural de dungeon (BSP: salas + corredores) a partir de uma seed."""
+"""Geração procedural de dungeon (BSP: salas + corredores) a partir de uma seed,
+com portas e salas temáticas mobiliadas (`furnish.py`)."""
 import random
 import zlib
 from dataclasses import dataclass, field
@@ -29,6 +30,8 @@ class Room:
     y: int
     w: int
     h: int
+    theme: str = ""      # chave de themes.THEMES (escolhida em furnish.py)
+    floor: str = ""      # piso base da sala (um dos pisos do tema)
 
     @property
     def center(self):
@@ -44,6 +47,9 @@ class Dungeon:
     rooms: list = field(default_factory=list)
     doors: list = field(default_factory=list)      # lista de doors.Door
     door_at: dict = field(default_factory=dict)    # (tx, ty) -> Door
+    props: list = field(default_factory=list)      # furnish.PlacedProp com colisão
+    blocked: set = field(default_factory=set)      # tiles ocupados por móveis
+    decals: list = field(default_factory=list)     # furnish.PlacedProp sem colisão (no chão)
 
     def is_floor(self, tx, ty):
         """Chão no grid (ignora o estado das portas)."""
@@ -51,12 +57,22 @@ class Dungeon:
             return self.grid[ty][tx] == FLOOR
         return False
 
-    def is_walkable(self, tx, ty):
-        """Dá para andar/ver através: chão que não seja porta fechada."""
+    def is_transparent(self, tx, ty):
+        """Dá para ver através: chão que não seja porta fechada (móveis não
+        bloqueiam a visão)."""
         if not self.is_floor(tx, ty):
             return False
         door = self.door_at.get((tx, ty))
         return door is None or door.open
+
+    def is_walkable(self, tx, ty):
+        """Dá para andar: dá para ver através e não tem móvel."""
+        return self.is_transparent(tx, ty) and (tx, ty) not in self.blocked
+
+    def room_at(self, tile):
+        """Sala cujo retângulo contém o tile (None em corredores e paredes)."""
+        x, y = tile
+        return next((r for r in self.rooms if r.x <= x < r.x + r.w and r.y <= y < r.y + r.h), None)
 
     @property
     def spawn(self):
@@ -156,6 +172,10 @@ def generate(seed, width=80, height=60):
     # 4) Portas nas entradas das salas
     from doors import place_doors  # import local: doors usa tipos deste módulo
     place_doors(d, rng)
+
+    # 5) Temas e móveis (rng próprio: não muda o resto da geração)
+    from furnish import furnish
+    furnish(d, random.Random(seed ^ 0xF0E1))
     return d
 
 

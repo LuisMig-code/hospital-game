@@ -187,6 +187,8 @@ class KnockbackTests(unittest.TestCase):
 
     def setUp(self):
         self.d = generate(42)
+        self.d.props.clear()                       # sala vazia: só paredes seguram o empurrão
+        self.d.blocked.clear()
         self.horde = Horde(self.d, avoid=[self.d.spawn])
         self.room = max(self.d.rooms, key=lambda r: r.w * r.h)
         r = self.room

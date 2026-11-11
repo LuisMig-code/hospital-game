@@ -45,7 +45,8 @@ class DungeonTests(unittest.TestCase):
             d = open_all_doors(generate(seed))
             floor = {(x, y) for y in range(d.height) for x in range(d.width) if d.grid[y][x] == FLOOR}
             self.assertGreater(len(d.rooms), 3, seed)
-            self.assertEqual(flood(d), floor, f"seed {seed} tem chão inalcançável")
+            # todo chão sem móvel é alcançável (os móveis nunca fecham passagem)
+            self.assertEqual(flood(d), floor - d.blocked, f"seed {seed} tem chão inalcançável")
             for x in range(d.width):
                 self.assertNotEqual(d.grid[0][x], FLOOR)
                 self.assertNotEqual(d.grid[d.height - 1][x], FLOOR)
@@ -65,10 +66,10 @@ class DungeonTests(unittest.TestCase):
 
     def test_no_one_tile_wide_passages(self):
         """Todo tile de chão faz parte de algum bloco 2x2 de chão
-        (corredores e salas têm pelo menos 2 de largura)."""
+        (corredores e salas têm pelo menos 2 de largura; sem contar os móveis)."""
         for seed in range(200):
             d = open_all_doors(generate(seed))
-            w = d.is_walkable
+            w = d.is_transparent
             for y in range(d.height):
                 for x in range(d.width):
                     if not w(x, y):

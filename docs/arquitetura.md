@@ -6,16 +6,19 @@
 |---|---|---|
 | `main.py` | Janela, loop principal, input, câmera, zoom, névoa e HUD | `Game`, `build_map_surface`, `build_grid_surface` |
 | `settings.py` | Constantes (tela, cores, velocidades, estamina, visão, zoom) | — |
-| `dungeon.py` | Gera o grid da dungeon a partir da seed; spawn | `generate`, `Dungeon`, `Room`, `WALL`, `FLOOR`, `normalize_seed` |
+| `dungeon.py` | Geração BSP por seed: salas, corredores, portas e móveis (via `furnish`); andável (`is_walkable`, com móveis) e transparente (`is_transparent`, sem) | `generate`, `Dungeon`, `Room`, `normalize_seed` |
 | `doors.py` | Onde ficam as portas e abrir/fechar | `Door`, `place_doors`, `try_toggle` |
 | `player.py` | Movimento tile a tile, corrida, estamina, ataque, vida (golpe, empurrão, invulnerabilidade, morte), animação | `Player`, `tile_center` |
 | `zombies.py` | Zumbis: spawn por sala, estados (enterrado, surgindo, parado, andando, perseguindo, morrendo), caminho até o personagem, golpe, colisão, vida | `Zombie`, `Horde`, `spawn_zombies`, `chase_step` |
 | `combat.py` | Área de dano do golpe, aplicação nos zumbis, números de dano | `damage_map`, `apply_attack`, `FloatingText`, `texts_for` |
 | `fov.py` | Campo de visão e tiles já explorados | `compute_fov`, `Vision`, `in_radius` |
 | `lighting.py` | Névoa suave (1 pixel por tile, ampliada) e luz com queda/tremulação | `FogLayer`, `Light`, `build_light_mask` |
+| `themes.py` | Dados das salas temáticas: catálogo de props (pegada, colisão, recorte) e os 6 temas + corredor | `PROPS`, `THEMES`, `CORRIDOR` |
+| `furnish.py` | Escolhe o tema de cada sala e posiciona os móveis sem fechar passagens (sem pygame) | `furnish`, `PlacedProp`, `spawn_room` |
+| `props.py` | Recorte e desenho dos props (móveis a cada quadro, detalhes no mapa) | `PropArt`, `load_prop_images`, `slice_sheet` |
 | `items.py` | Kit médico no chão: spawn por sala (40%), flutuar e desenho | `MedKit`, `spawn_medkits` |
 | `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando, levando dano, pegando e usando o kit), do kit médico e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_kit_animations`, `load_medkit_item`, `load_zombie_animations` |
-| `tileset.py` | Recorta o tileset do hospital e desenha o mapa e as portas | `load_pieces`, `Tileset`, `render_map`, `draw_door` |
+| `tileset.py` | Piso, paredes e portas novos (recorte) e montagem do mapa por tema | `Tileset`, `render_map`, `theme_at`, `load_floor_blocks`, `load_wall_pieces`, `load_door_pieces` |
 
 Dependências entre módulos (setas = "usa"):
 
@@ -32,13 +35,13 @@ tileset ► dungeon (FLOOR), settings
 sprites ► settings
 ```
 
-`dungeon.py`, `doors.py` e `fov.py` não dependem de pygame, então podem ser testados sem janela.
+`dungeon.py`, `doors.py`, `fov.py`, `themes.py` e `furnish.py` não dependem de pygame, então podem ser testados sem janela.
 
 ## Ciclo de vida
 
 1. `Game.__init__` abre a janela, carrega as animações (`load_animations`) e o tileset (`Tileset()`). Se o tileset falhar ao carregar, o jogo cai para as cores sólidas verde/cinza.
 2. `Game.new_level(seed)` (no início e ao apertar **R**):
-   - gera a dungeon (`generate`), já com as portas (fechadas);
+   - gera a dungeon (`generate`), já com as portas (fechadas), os temas das salas e os móveis;
    - pré-renderiza o mapa inteiro numa `Surface` (`build_map_surface` → `render_map`) e o grid (`build_grid_surface`) — o mapa só muda na área de uma porta quando ela abre/fecha;
    - cria o `Player` no spawn (chão mais próximo do canto superior esquerdo);
    - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn) e os kits médicos (`spawn_medkits`);
@@ -61,7 +64,7 @@ O mundo é desenhado numa superfície do tamanho da área visível (`view_size()
 
 1. mapa pré-renderizado (piso + sombras das paredes + paredes + portas no estado atual);
 2. grid (só sobre o piso), se ligado;
-3. personagem e zumbis visíveis (`draw_actors`, inclusive os que estão morrendo), cada um com sua sombra (zumbis com piscar de dano e barra de vida), **ordenados pela altura dos pés** — quem está mais embaixo na tela fica na frente; com a névoa ligada, só aparecem zumbis em tiles visíveis;
+3. personagem, zumbis visíveis, kits e móveis na tela (`draw_actors`, inclusive os que estão morrendo), cada um com sua sombra (zumbis com piscar de dano e barra de vida), **ordenados pela altura dos pés** — quem está mais embaixo na tela fica na frente; com a névoa ligada, só aparecem zumbis em tiles visíveis;
 4. sobreposição: a metade de cima de uma porta da parede de cima, semitransparente, se o personagem está atrás dela (`draw_door_overlap`);
 5. luz em volta do personagem (`Light.draw`) e névoa suave (`FogLayer.render`) — as duas só com a névoa ligada (V);
 6. números de dano flutuando (por cima da névoa, para ler bem).

@@ -4,7 +4,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "assets"
 CHARACTER_SHEET = ASSETS / "personagem" / "Chibi Character Animation Sprite Sheet.png"
-TILESET = ASSETS / "background" / "hospital-tiles.png"
+FLOOR_SHEET = ASSETS / "background" / "Seamless Grungy Hospital Floor Tileset.png"
+WALL_SHEET = ASSETS / "background" / "Pixel Hospital Wall Tileset.png"
+DOOR_SHEET = ASSETS / "background" / "Industrial Teal Door Tile Sprite Sheet.png"
+PROP_SHEETS = {
+    "equip": ASSETS / "cenario" / "Detailed Hospital Equipment Sprite Sheet.png",
+    "furn": ASSETS / "cenario" / "Hospital Furniture Sprite Sheet on Transparent Background.png",
+    "weath": ASSETS / "cenario" / "Weathered Medical Facility Prop Sprite Sheet.png",
+}
 ZOMBIE_SHEET = ASSETS / "monster" / "zombie_spritesheet_32x32.png"
 ATTACK_SHEET = ASSETS / "personagem" / "atack_spritsheet.png"
 DAMAGE_SHEET = ASSETS / "personagem" / "damage.png"   # personagem levando dano (com e sem empurrão)
@@ -36,9 +43,9 @@ COLOR_GRID = (0, 0, 0, 40)      # linhas do grid (com transparência)
 COLOR_BG = (20, 20, 20)
 COLOR_TEXT = (255, 255, 255)
 
-# Variações do tileset (escolhidas pela seed)
-FLOOR_BLOOD_CHANCE = 0.08       # chance de um bloco 3x3 de piso ter sangue
-WALL_VENT_CHANCE = 0.15         # chance de uma parede ter ventilação
+# Variações do mapa (escolhidas pela seed)
+FLOOR_DECAL_CHANCE = 0.22       # chance de um bloco 3x3 de piso ter um detalhe (sangue, rachadura...)
+WALL_DETAIL_CHANCE = 0.18       # chance de um trecho de parede ter janela/placa/luminária...
 
 # Sombras e luz
 WALL_SHADOW_TOP = 20            # px de sombra no piso logo abaixo de uma parede
@@ -114,3 +121,6 @@ MEDKIT_BOB = 3                  # px que o kit sobe e desce flutuando
 PICKUP_FPS = 14                 # animação de pegar e guardar o kit (6 quadros ≈ 0,43 s)
 HEAL_FPS = 12                   # animação de usar o kit (8 quadros ≈ 0,67 s)
 HEAL_FRAME = 4                  # quadro da animação em que a vida é recuperada (começa o brilho)
+
+# Salas temáticas e móveis
+FURNITURE_DENSITY = 0.24        # fração máxima dos tiles de uma sala ocupada por móveis

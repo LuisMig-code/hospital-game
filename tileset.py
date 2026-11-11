@@ -1,8 +1,14 @@
-"""Recorte do tileset do hospital e montagem do mapa com a arte.
+"""Piso, paredes e portas do hospital, e a montagem do mapa com a arte.
 
-O arquivo não é uma grade uniforme: são peças soltas (pisos, paredes, portas)
-com fundo transparente. Elas são encontradas pelos componentes conectados
-do canal alpha, agrupadas por linha e ordenadas da esquerda para a direita.
+Três sheets (veja docs/assets.md):
+- piso: grade 8x4 de blocos, cada bloco = 3x3 placas = 3x3 tiles do jogo;
+- paredes: fundo magenta, 8 linhas x 6 peças (6 estilos de parede + cantos
+  + detalhes extras);
+- portas: fundo preto e contorno magenta, grade 8x4 (usamos as portas
+  duplas da linha 0).
+
+O estilo da parede, a porta e o piso de cada lugar vêm do tema da sala
+(`themes.py`); corredores usam o tema CORRIDOR.
 """
 import random
 
@@ -10,136 +16,174 @@ import pygame
 
 import settings as S
 from dungeon import FLOOR
+from themes import CORRIDOR, THEMES
 
-# Nomes das peças por linha do arquivo, da esquerda para a direita
-PIECE_ROWS = [
-    ["floor", "floor_blood"],
-    ["wall_vent", "wall_low", "wall_pillar_left", "wall_pillar_right"],
-    ["door_double_closed", "door_double_open", "door_single_left", "door_single_right"],
-]
-TRIM = 2          # px removidos de cada borda (início do contorno roxo)
-MIN_AREA = 400    # componentes menores que isso são ruído
+# --------------------------------------------------------------------- piso
+FLOOR_GRID = (8, 4)          # colunas, linhas de blocos
+FLOOR_BLOCKS = {
+    "plain": (0, 0), "cracked": (1, 0), "broken": (2, 0), "footprints": (3, 0),
+    "puddle": (4, 0), "papers": (5, 0), "plain_streak": (6, 0), "blood_smear": (7, 0),
+    "beige": (0, 1), "blue": (1, 1), "checker": (2, 1), "dark": (3, 1),
+    "slime": (4, 1), "yellow_line": (5, 1), "grate": (6, 1), "concrete": (7, 1),
+    "blood_drops": (0, 2), "blood_splat": (1, 2), "blood_hand": (2, 2), "blood_trail": (3, 2),
+    "dirt": (4, 2), "blood_crack": (5, 2), "blood_dried": (6, 2), "mold": (7, 2),
+    "metal_bar": (0, 3), "drain": (1, 3), "hatch": (2, 3), "hole": (3, 3),
+    "carpet": (4, 3), "burnt": (5, 3), "glass_floor": (6, 3), "blood_bag": (7, 3),
+}
+
+# ------------------------------------------------------------------ paredes
+WALL_STYLES = 6              # linhas 0-5: um estilo cada
+WALL_PARTS = ("full", "low", "pillar_left", "pillar_right", "window", "detail")
+WALL_EXTRAS = ("hole", "rubble", "red_lamp", "blinds", "extinguisher", "plaque")   # linha 7
+EXTRA_STYLES = (0,)          # estilos em que os extras combinam (parede branca rachada)
+
+# -------------------------------------------------------------------- portas
+DOOR_GRID = (8, 4)
+DOOR_CLOSED = {"closed": 0, "blood": 1, "shattered": 6, "vault": 7}   # colunas da linha 0
+DOOR_OPEN = 3
 
 
-def _is_outline(color):
-    """O contorno das peças é roxo/magenta: vermelho e azul bem acima do verde."""
-    r, g, b, a = color
-    return a > 0 and r - g > 25 and b - g > 20
+def remove_magenta(img, tolerance=90):
+    """Fundo magenta vira transparente; a franja arroxeada que sobra na borda
+    das peças vira traço escuro (como o contorno do desenho)."""
+    bg = pygame.mask.from_threshold(img, (255, 0, 255, 255), (tolerance, tolerance, tolerance, 255))
+    fg = bg.copy()
+    fg.invert()
+    src = pygame.Surface(img.get_size(), pygame.SRCALPHA)
+    src.blit(img, (0, 0))
+    out = fg.to_surface(setsurface=src, unsetcolor=(0, 0, 0, 0))
+    fringe = pygame.mask.from_threshold(img, (175, 40, 175, 255), (80, 41, 80, 255))
+    fringe = fringe.overlap_mask(fg, (0, 0))      # só onde é peça
+    out.blit(fringe.to_surface(setcolor=(22, 18, 24, 255), unsetcolor=(0, 0, 0, 0)), (0, 0))
+    return out, fg
 
 
-def clean_outline(img):
-    """Torna transparentes os pixels do contorno roxo e recorta a imagem
-    para a área que sobrou."""
-    img = img.copy()
+def _runs(counts, min_gap):
+    from sprites import _runs as runs
+    return runs(counts, min_gap)
+
+
+def load_floor_blocks(path=None):
+    """{nome: Surface 96x96} de cada bloco 3x3 do piso."""
+    sheet = pygame.image.load(str(path or S.FLOOR_SHEET))
+    if pygame.display.get_surface() is not None:
+        sheet = sheet.convert()
+    w, h = sheet.get_size()
+    cols, rows = FLOOR_GRID
+    out = {}
+    for name, (c, r) in FLOOR_BLOCKS.items():
+        x0, x1 = round(c * w / cols), round((c + 1) * w / cols)
+        y0, y1 = round(r * h / rows), round((r + 1) * h / rows)
+        out[name] = pygame.transform.smoothscale(sheet.subsurface((x0, y0, x1 - x0, y1 - y0)),
+                                                 (3 * S.TILE, 3 * S.TILE))
+    return out
+
+
+def load_wall_pieces(path=None):
+    """{(linha, coluna): Surface} das peças de parede, sem o magenta,
+    recortadas pela projeção do alpha."""
+    from sprites import _col_counts, _row_counts
+    raw = pygame.image.load(str(path or S.WALL_SHEET))
+    img, fg = remove_magenta(raw)
     w, h = img.get_size()
-    img.lock()
-    for y in range(h):
-        for x in range(w):
-            c = img.get_at((x, y))
-            if _is_outline(c):
-                img.set_at((x, y), (c.r, c.g, c.b, 0))
-    img.unlock()
-    rect = _opaque_rect(img)
-    return img.subsurface(rect).copy() if rect.w and rect.h else img
-
-
-def find_pieces(sheet):
-    """Retorna {nome: Rect} com o retângulo de cada peça no arquivo."""
-    mask = pygame.mask.from_surface(sheet, 20)
-    rects = []
-    for comp in mask.connected_components():
-        if comp.count() >= MIN_AREA:
-            rects.append(comp.get_bounding_rects()[0].unionall(comp.get_bounding_rects()))
-    expected = sum(len(r) for r in PIECE_ROWS)
-    if len(rects) != expected:
-        raise ValueError(f"tileset: esperava {expected} peças, encontrou {len(rects)}")
-
-    # Agrupa em linhas: peças cujo centro Y fica dentro da altura da linha atual
-    rects.sort(key=lambda r: r.centery)
-    rows = []
-    for r in rects:
-        if rows and r.centery < rows[-1][0].bottom:
-            rows[-1].append(r)
-        else:
-            rows.append([r])
-    if [len(r) for r in rows] != [len(r) for r in PIECE_ROWS]:
-        raise ValueError(f"tileset: linhas com {[len(r) for r in rows]} peças, "
-                         f"esperava {[len(r) for r in PIECE_ROWS]}")
-
+    rows = [r for r in _runs(_row_counts(fg, 0, 0, w, h), 4) if r[1] - r[0] > 40]
     pieces = {}
-    for names, row in zip(PIECE_ROWS, rows):
-        for name, r in zip(names, sorted(row, key=lambda r: r.x)):
-            pieces[name] = r.inflate(-2 * TRIM, -2 * TRIM)
+    for ri, (y0, y1) in enumerate(rows):
+        cols = [c for c in _runs(_col_counts(fg, 0, y0, w, y1 - y0), 4) if c[1] - c[0] > 40]
+        for ci, (x0, x1) in enumerate(cols):
+            cell = img.subsurface((x0, y0, x1 - x0, y1 - y0))
+            pieces[(ri, ci)] = cell.subsurface(_opaque_rect(cell)).copy()
     return pieces
 
 
-def load_pieces(path=None):
-    """Carrega o tileset e devolve {nome: Surface} com cada peça recortada."""
-    sheet = pygame.image.load(str(path or S.TILESET))
-    if pygame.display.get_surface() is not None:
-        sheet = sheet.convert_alpha()
-    return {name: clean_outline(sheet.subsurface(r))
-            for name, r in find_pieces(sheet).items()}
+def load_door_pieces(path=None):
+    """{coluna: Surface} das portas duplas (linha 0), recortadas por dentro
+    do contorno magenta."""
+    sheet = pygame.image.load(str(path or S.DOOR_SHEET))
+    w, h = sheet.get_size()
+    cols, rows = DOOR_GRID
+    mag = pygame.mask.from_threshold(sheet, (240, 0, 240, 255), (110, 70, 110, 255))
+    out = {}
+    for c in range(cols):
+        cell = pygame.Rect(round(c * w / cols), 0, round(w / cols), round(h / rows))
+        sub = pygame.mask.Mask(cell.size)
+        sub.draw(mag, (-cell.x, -cell.y))
+        rects = sub.get_bounding_rects()
+        bb = rects[0].unionall(rects[1:]).inflate(-10, -10).move(cell.x, cell.y)
+        out[c] = sheet.subsurface(bb).copy()
+    return out
 
 
 class Tileset:
-    """Peças já escaladas para o tamanho do grid."""
+    """Peças já escaladas para o grid."""
 
-    def __init__(self, pieces=None):
-        p = pieces or load_pieces()
+    def __init__(self):
         t = S.TILE
-        self.pieces = p
-        # Piso: 3x3 placas -> 3x3 tiles
-        self.floor = pygame.transform.smoothscale(p["floor"], (3 * t, 3 * t))
-        self.floor_blood = pygame.transform.smoothscale(p["floor_blood"], (3 * t, 3 * t))
-        # Paredes altas: 2 tiles de altura. Todas recortadas pelo topo da
-        # parede (não pelo topo do pilar) para os topos ficarem alinhados.
-        left = self._crop_to_wall(p["wall_pillar_left"], 0.6)
-        right = self._crop_to_wall(p["wall_pillar_right"], 0.4)
-        # Parede lisa: várias faixas de 1 coluna tiradas do miolo das paredes
-        # com pilar; sorteadas por coluna para a rachadura não se repetir.
-        self.wall_plain = [
-            pygame.transform.smoothscale(self._strip(img, a, b), (t, 2 * t))
-            for img, a, b in ((left, 0.28, 0.60), (left, 0.60, 0.92),
-                              (right, 0.08, 0.40), (right, 0.40, 0.72))
-        ]
-        self.wall_vent = self._tall(self._crop_to_wall(p["wall_vent"], 0.5))
-        self.wall_left = self._tall(left)
-        self.wall_right = self._tall(right)
-        # Parede baixa: 1 tile de altura
-        self.wall_low = self._scale_to_tiles(p["wall_low"], S.TILE)
-        # Portas duplas: {lado: {aberta: Surface}}
+        self.floor = load_floor_blocks()
+        walls = load_wall_pieces()
+        # Paredes por estilo: {estilo: {...}}
+        self.walls = {}
+        for s in range(WALL_STYLES):
+            part = {name: walls[(s, i)] for i, name in enumerate(WALL_PARTS)}
+            left = self._crop_to_wall(part["pillar_left"], 0.7)
+            right = self._crop_to_wall(part["pillar_right"], 0.3)
+            style = {
+                # Parede lisa: faixas de 1 coluna tiradas do miolo das paredes
+                # com pilar (sem o pilar), sorteadas por coluna
+                "plain": [pygame.transform.smoothscale(self._strip(img, a, b), (t, 2 * t))
+                          for img, a, b in ((left, 0.32, 0.66), (left, 0.66, 1.0),
+                                            (right, 0.0, 0.34), (right, 0.34, 0.68))],
+                "left": self._sized(left, 2, 2),
+                "right": self._sized(right, 2, 2),
+                "low": self._sized(part["low"], 2, 1),
+                # detalhes de 2 colunas: parede cheia (rachadura/sangue...), janela e o detalhe
+                "details": [self._sized(self._crop_to_wall(part[n], 0.5), 2, 2)
+                            for n in ("full", "window", "detail")],
+            }
+            if s in EXTRA_STYLES:
+                style["details"] += [self._sized(self._crop_to_wall(walls[(7, i)], 0.5), 2, 2)
+                                     for i in range(len(WALL_EXTRAS))]
+            self.walls[s] = style
+        # Portas duplas: {variante: {lado: {aberta: Surface}}}
+        doors = load_door_pieces()
         self.door = {}
-        for side in ("top", "bottom", "left", "right"):
-            self.door[side] = {}
-            for is_open, name in ((False, "door_double_closed"), (True, "door_double_open")):
-                img = pygame.transform.smoothscale(p[name], (2 * t, 2 * t))
-                if side == "bottom":      # achatada: 1 tile de altura
-                    img = pygame.transform.smoothscale(img, (2 * t, t))
-                elif side == "left":      # base virada para dentro da sala (leste)
-                    img = pygame.transform.smoothscale(pygame.transform.rotate(img, 90), (t, 2 * t))
-                elif side == "right":     # base virada para dentro da sala (oeste)
-                    img = pygame.transform.smoothscale(pygame.transform.rotate(img, -90), (t, 2 * t))
-                self.door[side][is_open] = img
+        for variant, col in DOOR_CLOSED.items():
+            self.door[variant] = {}
+            for side in ("top", "bottom", "left", "right"):
+                self.door[variant][side] = {False: self._door(doors[col], side),
+                                            True: self._door(doors[DOOR_OPEN], side)}
 
     @staticmethod
-    def _scale_to_tiles(img, height):
-        """Escala para a altura dada mantendo a proporção, arredondando a
-        largura para um múltiplo inteiro de tiles (as peças viram colunas)."""
-        w = img.get_width() * height / img.get_height()
-        cols = max(1, round(w / S.TILE))
-        return pygame.transform.smoothscale(img, (cols * S.TILE, height))
+    def _door(img, side):
+        t = S.TILE
+        img = pygame.transform.smoothscale(img, (2 * t, 2 * t))
+        if side == "bottom":      # achatada: 1 tile de altura
+            return pygame.transform.smoothscale(img, (2 * t, t))
+        if side == "left":        # base virada para dentro da sala (leste)
+            return pygame.transform.smoothscale(pygame.transform.rotate(img, 90), (t, 2 * t))
+        if side == "right":       # base virada para dentro da sala (oeste)
+            return pygame.transform.smoothscale(pygame.transform.rotate(img, -90), (t, 2 * t))
+        return img
 
-    @classmethod
-    def _tall(cls, img):
-        return cls._scale_to_tiles(img, 2 * S.TILE)
+    def door_image(self, door):
+        theme = THEMES.get(getattr(door.room, "theme", ""), CORRIDOR)
+        return self.door[theme.door][door.side][door.open]
+
+    @staticmethod
+    def _sized(img, cols, rows, trim=0.025):
+        """Escala para cols x rows tiles, cortando um pouco das laterais (o
+        contorno escuro da peça, que viraria uma risca no meio da parede)."""
+        w, h = img.get_size()
+        dx = round(w * trim)
+        img = img.subsurface((dx, 0, w - 2 * dx, h))
+        return pygame.transform.smoothscale(img, (cols * S.TILE, rows * S.TILE))
 
     @staticmethod
     def _crop_to_wall(img, ref_x):
         """Recorta a altura da peça pelo topo/base da parede medidos na coluna
         ref_x (fração da largura), cortando a ponta do pilar que sobe acima."""
         w, h = img.get_size()
-        x = round(w * ref_x)
+        x = min(w - 1, round(w * ref_x))
         # leitura direta dos pixels (mask.from_surface numa subsurface de
         # 1 px de largura derruba o pygame-ce 2.5.8 no Windows)
         ys = [y for y in range(h) if img.get_at((x, y)).a >= 128]
@@ -156,42 +200,60 @@ class Tileset:
 
     @staticmethod
     def column(img, index, width=S.TILE):
-        """Fatia vertical `index` (em tiles) de uma imagem, repetindo em ciclo,
-        mas sempre usando colunas que cabem inteiras na imagem."""
+        """Fatia vertical `index` (em tiles) de uma imagem, repetindo em ciclo."""
         n = max(1, img.get_width() // width)
         x = (index % n) * width
         return img.subsurface((x, 0, width, img.get_height()))
 
 
-def render_map(dungeon, tileset):
-    """Desenha a dungeon com a arte do tileset. Retorna uma Surface do mapa."""
+def theme_at(dungeon, tile):
+    """Tema do lugar: o da sala que contém o tile, ou o do corredor."""
+    room = dungeon.room_at(tile)
+    return THEMES[room.theme] if room is not None and room.theme in THEMES else CORRIDOR
+
+
+def render_map(dungeon, tileset, props=None):
+    """Desenha a dungeon com a arte. Retorna uma Surface do mapa.
+    `props` (props.PropArt): desenha os detalhes de chão sem colisão."""
     t = S.TILE
     w, h = dungeon.width, dungeon.height
     surf = pygame.Surface((w * t, h * t))
     surf.fill(S.COLOR_WALL_TOP)
     rng = random.Random(dungeon.seed ^ 0x5EED)
 
-    # Piso: blocos 3x3 alinhados ao grid; alguns blocos com sangue
-    blood_blocks = {(bx, by) for by in range(0, h, 3) for bx in range(0, w, 3)
-                    if rng.random() < S.FLOOR_BLOOD_CHANCE}
+    # Piso: blocos 3x3 alinhados ao grid. Cada lugar usa o piso base da sala
+    # (ou do corredor) e às vezes um bloco com detalhe do tema.
+    chosen = {}
     for y in range(h):
         for x in range(w):
-            if dungeon.grid[y][x] == FLOOR:
-                src = tileset.floor_blood if (x - x % 3, y - y % 3) in blood_blocks else tileset.floor
-                surf.blit(src, (x * t, y * t), ((x % 3) * t, (y % 3) * t, t, t))
+            if dungeon.grid[y][x] != FLOOR:
+                continue
+            room = dungeon.room_at((x, y))
+            theme = theme_at(dungeon, (x, y))
+            key = (x - x % 3, y - y % 3, id(room))
+            if key not in chosen:
+                base = room.floor if room is not None and room.floor else rng.choice(theme.floors)
+                if theme.decals and rng.random() < S.FLOOR_DECAL_CHANCE:
+                    base = rng.choice(theme.decals)
+                chosen[key] = base
+            surf.blit(tileset.floor[chosen[key]], (x * t, y * t), ((x % 3) * t, (y % 3) * t, t, t))
 
-    # Paredes frontais: parede com chão logo abaixo. Processa por trechos
-    # horizontais contínuos para colocar pilares nas pontas.
+    if props is not None:
+        props.draw_decals(surf, dungeon)
+
+    # Paredes frontais: parede com chão logo abaixo, por trechos contínuos
+    # do mesmo estilo (o da sala embaixo) para colocar pilares nas pontas.
     for y in range(h):
         x = 0
         while x < w:
             if not is_front_wall(dungeon, x, y):
                 x += 1
                 continue
+            style = theme_at(dungeon, (x, y + 1)).wall
             start = x
-            while x < w and is_front_wall(dungeon, x, y):
+            while x < w and is_front_wall(dungeon, x, y) and theme_at(dungeon, (x, y + 1)).wall == style:
                 x += 1
-            _draw_wall_run(surf, dungeon, tileset, rng, start, x - 1, y)
+            _draw_wall_run(surf, dungeon, tileset.walls[style], rng, start, x - 1, y)
 
     bake_wall_shadows(surf, dungeon)
     init_doors(surf, dungeon, tileset)
@@ -269,7 +331,7 @@ def draw_door(surf, door, tileset):
     if door.base is not None:
         surf.blit(door.base, rect.topleft)
     if tileset is not None:
-        surf.blit(tileset.door[door.side][door.open], rect.topleft)
+        surf.blit(tileset.door_image(door), rect.topleft)
     else:
         t = S.TILE
         for x, y in door.tiles:
@@ -277,33 +339,32 @@ def draw_door(surf, door, tileset):
             surf.fill(color, (x * t, y * t, t, t))
 
 
-def _draw_wall_run(surf, dungeon, ts, rng, x0, x1, y):
+def _draw_wall_run(surf, dungeon, style, rng, x0, x1, y):
     t = S.TILE
-    vent_left = 0   # colunas restantes da peça com ventilação em andamento
-    vent_index = 0
+    detail_left = 0   # colunas restantes do detalhe (2 colunas) em andamento
+    detail, detail_index = None, 0
     for x in range(x0, x1 + 1):
         tall = 0 <= y - 1 and _solid(dungeon, x, y - 1)
         if not tall:
-            img = Tileset.column(ts.wall_low, x - x0)
+            img = Tileset.column(style["low"], x - x0)
             surf.blit(img, (x * t, y * t))
-            vent_left = 0
+            detail_left = 0
             continue
         if x == x0 and x1 > x0:
-            img = Tileset.column(ts.wall_left, 0)
+            img = Tileset.column(style["left"], 0)
         elif x == x1 and x1 > x0:
-            n = max(1, ts.wall_right.get_width() // t)
-            img = Tileset.column(ts.wall_right, n - 1)
-        elif vent_left > 0:
-            img = Tileset.column(ts.wall_vent, vent_index)
-            vent_index += 1
-            vent_left -= 1
-        elif x + 1 < x1 and rng.random() < S.WALL_VENT_CHANCE:
-            # a ventilação ocupa 2 colunas seguidas (cabe antes do pilar da direita)
-            vent_index, vent_left = 0, 1
-            img = Tileset.column(ts.wall_vent, vent_index)
-            vent_index += 1
+            img = Tileset.column(style["right"], 1)
+        elif detail_left > 0:
+            img = Tileset.column(detail, detail_index)
+            detail_index += 1
+            detail_left -= 1
+        elif x + 1 < x1 and rng.random() < S.WALL_DETAIL_CHANCE:
+            # o detalhe ocupa 2 colunas seguidas (cabe antes do pilar da direita)
+            detail = rng.choice(style["details"])
+            img = Tileset.column(detail, 0)
+            detail_index, detail_left = 1, 1
         else:
-            img = rng.choice(ts.wall_plain)
+            img = rng.choice(style["plain"])
         surf.blit(img, (x * t, (y - 1) * t))
 
 

@@ -2,6 +2,8 @@
 
 Todas as constantes ajustáveis ficam em `settings.py`.
 
+Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_SHEET`, `MEDKIT_SHEET`, `PICKUP_SHEET`, `HEAL_SHEET`, `FLOOR_SHEET`, `WALL_SHEET`, `DOOR_SHEET` e `PROP_SHEETS` (os 3 sheets de props).
+
 ## Tela, grid e mapa
 
 | Constante | Valor | Descrição |
@@ -27,8 +29,9 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `COLOR_GRID` | (0, 0, 0, 40) | Linhas do grid (RGBA) |
 | `COLOR_BG` | (20, 20, 20) | Fundo fora do mapa |
 | `COLOR_TEXT` | branco | Texto do HUD |
-| `FLOOR_BLOOD_CHANCE` | 0.08 | Chance de um bloco 3×3 de piso ter sangue |
-| `WALL_VENT_CHANCE` | 0.15 | Chance de ventilação numa parede alta |
+| `FLOOR_DECAL_CHANCE` | 0.22 | Chance de um bloco 3×3 de piso ter um detalhe do tema (sangue, rachadura...) |
+| `WALL_DETAIL_CHANCE` | 0.18 | Chance de um detalhe de 2 colunas (janela, placa, luminária...) numa parede alta |
+| `FURNITURE_DENSITY` | 0.24 | Fração máxima dos tiles de uma sala ocupada por móveis |
 
 ## Sombras e luz
 

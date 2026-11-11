@@ -13,8 +13,8 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 ### `tests/test_dungeon.py`
 - A mesma seed gera o mesmo grid (número e texto); seeds diferentes geram grids diferentes.
 - `normalize_seed`: `"123"` vira 123 e textos são estáveis.
-- Em 200 seeds (com todas as portas abertas): mais de 3 salas, **todo o chão é alcançável** a partir do spawn (flood fill) e a borda é sempre parede.
-- Em 200 seeds: **não existe passagem de 1 tile de largura** (todo tile de chão faz parte de algum bloco 2×2 de chão).
+- Em 200 seeds (com todas as portas abertas): mais de 3 salas, **todo o chão sem móvel é alcançável** a partir do spawn (flood fill) e a borda é sempre parede.
+- Em 200 seeds: **não existe passagem de 1 tile de largura** no layout (todo tile de chão faz parte de algum bloco 2×2 de chão, sem contar os móveis).
 - O spawn é o chão (não porta) mais próximo do canto superior esquerdo.
 
 ### `tests/test_doors.py`
@@ -90,12 +90,20 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Evento `MOUSEWHEEL` muda o alvo; o desenho funciona em zooms fracionários.
 
 ### `tests/test_tileset.py`
-- O recorte encontra as 10 peças na ordem esperada (pisos em cima, portas embaixo, proporções corretas).
-- Nenhum pixel do contorno roxo sobra nas peças.
-- As peças são escaladas para múltiplos do tile (piso 96×96, paredes altas 64 px, parede baixa 32 px).
-- `render_map` é determinístico: a mesma seed gera exatamente a mesma imagem.
+- Piso: 32 blocos de 96×96, e todo piso citado nos temas existe.
+- Paredes: 6 estilos × 6 peças recortadas, sem nenhum pixel do fundo magenta; peças escaladas para o grid (faixas 32×64, pilares e detalhes 64×64, parede baixa 64×32).
+- Portas: 8 portas duplas recortadas por dentro do contorno, sem magenta; cada variante tem o tamanho certo para cada lado, fechada e aberta; todo tema usa uma variante que existe; porta de necrotério usa o cofre.
+- `render_map` (com os detalhes de chão) é determinístico; sala de centro cirúrgico tem piso azul e corredor usa o tema do corredor.
 - Sombra das paredes: o topo de um tile de chão encostado numa parede fica bem mais escuro que o meio.
-- Os sprites de porta têm o tamanho certo para cada lado; abrir todas as portas muda o mapa, e fechar de novo volta exatamente à imagem original.
+- Abrir todas as portas muda o mapa, e fechar de novo volta exatamente à imagem original.
+
+### `tests/test_furnish.py`
+- Em 100 seeds: toda sala tem tema e piso do tema, a sala do spawn é a Recepção e todos os temas aparecem.
+- Móveis só dentro da sala, só do tema dela, sem sobrepor, a mais de 2 tiles de portas e do spawn; `blocked` é exatamente a soma das pegadas.
+- **Todo chão sem móvel continua alcançável** a partir do spawn (com as portas abertas).
+- Ocupação de cada sala ≤ `FURNITURE_DENSITY` e com móveis de verdade (> 5% no total).
+- Móvel bloqueia andar mas não a visão; detalhes de chão não têm colisão; mesma seed → mesmos temas e móveis.
+- Props: todos os do catálogo recortam com a largura certa, altura razoável e sem sobra de fundo; temas só usam props que existem; o desenho fica na base da pegada.
 
 ## Teste manual
 
