@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-11 — Estantes maiores
+- Estantes (cheia, com sangue, vazia) aumentadas como os armários: 2 tiles de largura e ~2 tiles de altura, só na parede de cima. A estante quebrada (no chão do Depósito) também ficou um pouco maior. Nas laterais entram gaveteiros, caixas e caixotes.
+
 ## 2026-11-11 — Armários maiores
 - Armários altos (de vidro, de metal, enferrujado), lockers e armários baixos aumentados: agora ocupam 2 tiles de largura e os altos ficam com ~2 tiles de altura, mais altos que o personagem. Por isso só vão encostados na parede de cima (nas laterais só entram móveis de 1 tile).
 
