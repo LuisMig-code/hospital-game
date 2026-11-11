@@ -15,7 +15,7 @@ Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a par
 
 ## Como rodar
 
-Requisitos: Python 3.14 (testado) e `pygame-ce` (tem wheels para Python 3.14; o `pygame` clássico pode não ter).
+Requisitos: Python 3.14 (testado), `pygame-ce` (tem wheels para Python 3.14; o `pygame` clássico pode não ter) e `opencv-python-headless` (toca o vídeo do elevador na troca de andar; sem ele o jogo funciona, com uma tela escura no lugar do vídeo).
 
 ```bash
 python -m venv venv
@@ -33,14 +33,16 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 |---|---|
 | WASD / setas | Andar (um tile por vez; segurando, anda contínuo). **Duas teclas juntas andam na diagonal** (ex.: W+A). Parado, apertar outra direção primeiro só vira; segurando, anda em seguida |
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
-| Espaço | Zumbi colado → **ataca**. Senão, parado em cima de um **kit médico** → pega. Senão, porta à frente (ou embaixo) → abre/fecha. Senão → **ataca** com a faca na direção em que ele está virado (dano em área) |
+| Espaço | Zumbi colado → **ataca**. Senão, na frente do **elevador de saída** → entra. Senão, parado em cima de um **kit médico** → pega. Senão, porta à frente (ou embaixo) → abre/fecha. Senão → **ataca** com a faca na direção em que ele está virado (dano em área) |
 | H | Usa um kit médico guardado (+2 de vida) |
+
+Objetivo: cada andar começa com o personagem saindo de um **elevador**; ache o **elevador de saída** (numa sala longe) e aperte **Espaço** na frente dele para ir ao próximo andar (vida e kits continuam). Morrer começa uma run nova no andar 1.
 
 Salas temáticas: cada sala é uma Recepção, Enfermaria, Emergência, Centro cirúrgico, Necrotério ou Depósito, com parede, porta, piso e **móveis com colisão** do tema (veja [sistemas.md](sistemas.md)).
 
 Vida: o personagem tem **10**; zumbis a até 5 tiles vão atrás dele e cada golpe tira **2** e o empurra para longe do zumbi. Zumbi que sobrevive a um golpe da faca também é lançado 1 tile para longe. Vida 0 é **game over** e a mesma dungeon recomeça.
 | Roda do mouse | Zoom contínuo e suave entre 1x e 2x (para cima aproxima) |
-| R | Gerar nova dungeon (seed aleatória) |
+| R | Começar uma run nova (andar 1, seed aleatória) |
 | G | Mostrar/esconder o grid |
 | V | Ligar/desligar a névoa de guerra e a iluminação (mostra o mapa inteiro) |
 | ESC | Sair |

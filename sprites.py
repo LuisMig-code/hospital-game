@@ -480,3 +480,46 @@ def _opaque_bbox(img, threshold=40):
     if not rects:
         return pygame.Rect(0, 0, w, h)
     return rects[0].unionall(rects[1:])
+
+
+# ----------------------------------------------------------------- elevador
+# Dois sheets com grade de 175,25 px de passo (1402 / 8), 4 linhas.
+# (sheet, linha, quadros) de cada animação; "closed" é um quadro só.
+ELEVATOR_PITCH = 1402 / 8
+ELEVATOR_ANIMS = {
+    "arrive": ("arrive", 2, range(8)),      # portas abrindo com o personagem dentro
+    "close": ("arrive", 1, range(8)),       # portas fechando (luz azul)
+    "idle": ("exit", 0, range(6)),          # saída fechada, luz pulsando
+    "open_exit": ("exit", 1, range(8)),     # saída abrindo (luz amarela)
+    "closed": ("exit", 2, range(1, 2)),     # saída fechada, acesa
+}
+
+
+def load_elevator_animations(width=None, raw=False):
+    """{nome: [Surface, ...]} do elevador, cada quadro com `width` px de
+    largura (padrão ELEVATOR_WIDTH). Linhas pela projeção do alpha; colunas
+    pela grade fixa (os quadros encostam uns nos outros)."""
+    from settings import ELEVATOR_ARRIVE_SHEET, ELEVATOR_EXIT_SHEET, ELEVATOR_WIDTH
+    width = width or ELEVATOR_WIDTH
+    sheets, rows = {}, {}
+    for key, path in (("arrive", ELEVATOR_ARRIVE_SHEET), ("exit", ELEVATOR_EXIT_SHEET)):
+        sheet = pygame.image.load(str(path))
+        if pygame.display.get_surface() is not None:
+            sheet = sheet.convert_alpha()
+        w, h = sheet.get_size()
+        mask = pygame.mask.from_surface(sheet, 128)
+        sheets[key] = sheet
+        rows[key] = [r for r in _runs(_row_counts(mask, 0, 0, w, h), min_gap=3) if r[1] - r[0] > 40]
+    anims = {}
+    for name, (key, row, cols) in ELEVATOR_ANIMS.items():
+        y0, y1 = rows[key][row]
+        frames = []
+        for c in cols:
+            x0, x1 = round(c * ELEVATOR_PITCH), round((c + 1) * ELEVATOR_PITCH)
+            cell = sheets[key].subsurface((x0, y0, x1 - x0, y1 - y0))
+            img = cell.subsurface(_opaque_bbox(cell, 128)).copy()
+            if not raw:
+                img = pygame.transform.smoothscale(img, (width, round(img.get_height() * width / img.get_width())))
+            frames.append(img)
+        anims[name] = frames
+    return anims

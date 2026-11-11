@@ -2,7 +2,7 @@
 
 Todas as constantes ajustáveis ficam em `settings.py`.
 
-Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_SHEET`, `MEDKIT_SHEET`, `PICKUP_SHEET`, `HEAL_SHEET`, `FLOOR_SHEET`, `WALL_SHEET`, `DOOR_SHEET` e `PROP_SHEETS` (os 3 sheets de props).
+Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_SHEET`, `MEDKIT_SHEET`, `PICKUP_SHEET`, `HEAL_SHEET`, `FLOOR_SHEET`, `WALL_SHEET`, `DOOR_SHEET`, `ELEVATOR_ARRIVE_SHEET`, `ELEVATOR_EXIT_SHEET`, `FLOOR_VIDEO`, `FLOOR_VIDEO_SOUND` e `PROP_SHEETS` (os 3 sheets de props).
 
 ## Tela, grid e mapa
 
@@ -139,3 +139,15 @@ Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_
 | `PICKUP_FPS` | 14 | Animação de pegar e guardar (6 quadros ≈ 0,43 s) |
 | `HEAL_FPS` | 12 | Animação de usar o kit (8 quadros ≈ 0,67 s) |
 | `HEAL_FRAME` | 4 | Quadro em que a vida é recuperada |
+
+## Elevadores e andares
+
+| Constante | Valor | Descrição |
+|---|---|---|
+| `ELEVATOR_WIDTH` | 68 | Largura do elevador na tela (px, ~2 tiles) |
+| `ELEVATOR_FPS` | 10 | Quadros por segundo das animações do elevador |
+| `ELEVATOR_NEAR` | 3 | A até essa distância (tiles) a saída pulsa a luz |
+| `ELEVATOR_WALK_TIME` | 0.5 | Segundos do personagem entrando no elevador |
+| `FLOOR_FADE_TIME` | 1.2 | Segundos da tela escura com "Andar N" entre andares (só sem o vídeo) |
+| `FLOOR_VIDEO_TEXT_TIME` | 2.0 | Últimos segundos do vídeo com "Andar N" aparecendo por cima |
+| `FLOOR_VIDEO_VOLUME` | 0.8 | Volume do som do vídeo (0 a 1) |

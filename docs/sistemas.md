@@ -14,8 +14,7 @@ Algoritmo **BSP (Binary Space Partitioning)**, determinístico pela seed (`rando
 Seeds em texto viram número com `zlib.crc32` (estável entre execuções, ao contrário de `hash()`); textos numéricos como `"42"` viram o próprio número.
 
 ### Spawn
-
-O personagem nasce no **canto superior esquerdo**: `Dungeon.spawn` é o tile de chão (que não seja porta) mais próximo de `(0, 0)` — menor `x² + y²`, com desempate por `y` e depois `x`. Como o canto em si é sempre parede, ele nasce no chão mais próximo dali.
+O personagem começa **na frente do elevador de chegada** (`Dungeon.spawn`), que fica na sala mais perto do canto de cima à esquerda — o chão (não porta) com menor `x² + y²` (veja "Elevadores e andares").
 
 ## Portas (`doors.py`)
 
@@ -236,7 +235,7 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 
 ### Game over
 - Vida 0: o personagem cai (animação de empurrão parada no quadro "caído"), os controles e os zumbis param de agir sobre ele, a tela escurece e aparece **GAME OVER**.
-- Depois de `GAME_OVER_TIME` (3 s) a **mesma dungeon** (mesma seed) recomeça do zero: vida cheia, zumbis enterrados de novo, névoa zerada.
+- Depois de `GAME_OVER_TIME` (3 s) começa uma **run nova**: seed aleatória, andar 1, vida cheia, sem kits (veja "Elevadores e andares").
 
 ## Kit médico (`items.py`, `player.py`, `main.py`)
 
@@ -247,11 +246,12 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 
 ### Espaço: atacar tem preferência
 `Game.action` decide, nesta ordem:
-1. personagem ocupado (levando dano, atacando, pegando ou usando kit) → nada;
+1. personagem ocupado (levando dano, atacando, pegando ou usando kit) ou chegando/saindo de elevador → nada;
 2. **zumbi colado** (fora do chão e vivo, em qualquer uma das 8 direções, sem quina de parede no meio — `zombies.touching`) → **ataca**, mesmo com kit embaixo ou porta à frente;
-3. **parado em cima de um kit** → pega: o kit sai do chão, entra na conta (**sem limite**) e toca a animação de pegar e guardar (`pickup_<direção>`, 6 quadros a `PICKUP_FPS`, sem andar nem atacar). Mensagem "Kit médico guardado [H] usar";
-4. porta à frente / embaixo → abre/fecha;
-5. senão → ataca.
+3. parado na **frente do elevador de saída** → entra (próximo andar; veja "Elevadores e andares");
+4. **parado em cima de um kit** → pega: o kit sai do chão, entra na conta (**sem limite**) e toca a animação de pegar e guardar (`pickup_<direção>`, 6 quadros a `PICKUP_FPS`, sem andar nem atacar). Mensagem "Kit médico guardado [H] usar";
+5. porta à frente / embaixo → abre/fecha;
+6. senão → ataca.
 
 ### H: usar o kit
 - Sem kit: mensagem "Sem kit médico"; vida cheia: "Vida cheia" (nada é gasto).
@@ -259,3 +259,27 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 - Pedido no meio de um passo: começa ao chegar no tile. Durante a animação não anda, não vira e não ataca.
 - **Golpe de zumbi antes do brilho cancela e não gasta** o kit (o golpe também interrompe a animação de pegar — o kit já está guardado).
 - HUD: ícone do kit e **"Kits: N"** ao lado da vida.
+
+## Elevadores e andares (`elevators.py`, `main.py`)
+
+### Onde ficam
+- `place_elevators` (em `dungeon.generate`, depois das portas e antes dos móveis). Cada elevador ocupa **2 tiles da parede de cima** de uma sala — parede alta (parede em cima também) com chão da sala embaixo — sem porta nem abertura a menos de 2 tiles. Os 2 tiles de chão logo abaixo são a **frente**.
+- **Chegada**: na sala mais perto (pelo caminho) do chão do canto de cima à esquerda, na posição mais perto dele. `Dungeon.spawn` é o tile da esquerda da frente desse elevador, então tudo que usa o spawn (Recepção, zumbis e kits longe do spawn) continua igual.
+- **Saída**: sorteada entre a **metade das salas mais longe** do spawn (distância pelo caminho), nunca na sala da chegada; se nenhuma delas tiver lugar na parede de cima, tenta as mais perto. Em 100 seeds, a saída ficou numa sala longe em mais de 90%.
+- A frente dos dois fica livre: nenhum móvel a até 2 tiles dela; zumbis e kits não nascem a até 2 tiles da frente da saída.
+
+### Fases de um andar (`Game.phase`)
+| Fase | O que acontece |
+|---|---|
+| `arrive` | O elevador de chegada toca a animação das portas abrindo **com o personagem dentro** (8 quadros a `ELEVATOR_FPS`). O personagem real fica escondido e sem controle. No fim ele aparece na frente, olhando para baixo, as portas fecham (`close`) e aparece "Andar N — encontre o elevador". |
+| `play` | Jogo normal. A saída fica fechada (`closed`) e passa a **pulsar a luz** (`idle`, em loop) com o personagem a até `ELEVATOR_NEAR` (3) tiles. |
+| `exit` | **Espaço** parado num tile da frente da saída: as portas abrem (luz amarela, `open_exit`), o personagem anda sozinho para dentro de costas (`ELEVATOR_WALK_TIME`, desenhado por cima do elevador), some e as portas fecham (`open_exit` ao contrário). Zumbis e controles param. |
+| `video` | Toca em tela cheia o **vídeo do elevador** (o elevador por dentro, as portas abrindo para uma luz forte; ~7,9 s, com som). Ele surge do preto e, nos últimos `FLOOR_VIDEO_TEXT_TIME` s, aparece **"Andar N+1"** por cima. **Espaço** ou **Enter** pulam. No fim, o próximo andar começa. |
+| `fade` | Só sem o vídeo (OpenCV não instalado ou arquivo faltando): a tela escurece com **"Andar N+1"** (`FLOOR_FADE_TIME`). |
+
+- **Vídeo** (`video.py`): o pygame não toca vídeo, então `FloorVideo` lê os quadros do `.mp4` com o OpenCV, um por vez, no ritmo do vídeo (24 fps, ~1,7 ms por quadro), converte BGR → RGB e mostra numa `Surface`. O som (AAC dentro do `.mp4`, que o mixer do pygame não lê) foi extraído uma vez para `elevator_video.wav` (`tools/extract_video_audio.py`) e toca no mixer junto com o vídeo; pular o vídeo para o som.
+- **Próximo andar**: dungeon nova com seed derivada da run (`"<seed da run>-<andar>"`), **mantendo vida e kits**.
+- **Game over**: a run acaba; depois de `GAME_OVER_TIME` começa uma **run nova com seed aleatória**, andar 1, vida cheia e sem kits. **R** também começa uma run nova.
+- Ordem do Espaço: zumbi colado → ataca; **frente da saída → entra no elevador**; kit embaixo → pega; porta → abre/fecha; senão ataca. Durante a chegada e a saída o Espaço não faz nada.
+- Os elevadores são desenhados junto com personagem, zumbis e móveis, ordenados pela base (a linha logo abaixo da parede), antes da névoa: a saída só aparece depois de descoberta.
+- HUD: "Andar N" no começo da linha de cima (a seed mostrada é a da run).

@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+os.environ.setdefault("SDL_AUDIODRIVER", "dummy")      # o vídeo do elevador tem som
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import main  # noqa: E402
@@ -17,10 +18,16 @@ from zombies import IDLE, Zombie  # noqa: E402
 FACING = {(0, -1): "up", (0, 1): "down", (-1, 0): "left", (1, 0): "right"}
 
 
+def play(g):
+    """Pula a chegada do elevador: o andar já em jogo normal."""
+    g.phase, g.player_visible = "play", True
+    return g
+
+
 class SpaceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.game = main.Game(42)
+        cls.game = play(main.Game(42))
 
     def place_facing_door(self):
         """Personagem dentro da sala, olhando para a primeira porta."""
@@ -85,7 +92,7 @@ class SpaceOrderTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.game = main.Game(42)
+        cls.game = play(main.Game(42))
 
     def setUp(self):
         g = self.game
@@ -174,7 +181,7 @@ class SpaceOrderTests(unittest.TestCase):
 
 
 class GameOverTests(unittest.TestCase):
-    def test_zombie_hit_then_game_over_restarts_same_seed(self):
+    def test_zombie_hit_then_game_over_starts_new_run(self):
         g = main.Game(7)
         g.horde.zombies = []
         p = g.player
@@ -196,10 +203,128 @@ class GameOverTests(unittest.TestCase):
         for _ in range(round(0.4 * 60)):
             g.step(1 / 60, no_keys)
         self.assertIsNot(g.player, p)                       # recomeçou
-        self.assertEqual(g.seed, 7)
+        self.assertNotEqual(g.run_seed, 7)                  # run nova, outra seed
+        self.assertEqual(g.floor, 1)
+        self.assertEqual(g.player.medkits, 0)
         self.assertEqual(g.player.hp, S.PLAYER_HP)
         self.assertEqual(g.player.tile, g.dungeon.spawn)
         self.assertFalse(g.player.dead)
+
+
+class ElevatorFlowTests(unittest.TestCase):
+    def setUp(self):
+        self.g = main.Game(42)
+
+    def run_frames(self, seconds, keys=None):
+        for _ in range(round(seconds * 60)):
+            self.g.step(1 / 60, keys or _NoKeys())
+
+    def test_arrival_locks_controls_then_closes(self):
+        g = self.g
+        self.assertEqual(g.phase, "arrive")
+        self.assertFalse(g.player_visible)
+        self.assertEqual(g.player.tile, g.dungeon.elevator_in.front[0])
+        keys = _Keys({main.pygame.K_s: True})
+        self.run_frames(0.5, keys)                          # ainda saindo: não anda
+        self.assertEqual(g.player.tile, g.dungeon.spawn)
+        g.action()
+        self.assertFalse(g.player.attack_queued)
+        self.run_frames(8 / S.ELEVATOR_FPS)
+        self.assertEqual(g.phase, "play")
+        self.assertTrue(g.player_visible)
+        self.assertEqual(g.el_in.anim, "close")
+
+    def test_space_at_exit_goes_to_next_floor_keeping_hp_and_kits(self):
+        g = play(self.g)
+        ex = g.dungeon.elevator_out
+        g.horde.zombies = []
+        g.medkits = []
+        g.player = Player(g.anims, ex.front[1])
+        g.player.hp, g.player.medkits = 6, 2
+        first_seed = g.seed
+        g.action()
+        self.assertEqual(g.phase, "exit")
+        self.assertFalse(g.player.attack_queued)
+        g.action()                                          # Espaço durante a saída: nada
+        self.run_frames(8 / S.ELEVATOR_FPS + S.ELEVATOR_WALK_TIME + 8 / S.ELEVATOR_FPS + 0.2)
+        self.assertEqual(g.phase, "video")                  # vídeo do elevador
+        self.assertTrue(g.draw_floor_video())
+        self.assertEqual(g.floor, 1)
+        self.run_frames(g.video.duration + 0.1)
+        self.assertIsNone(g.video)
+        self.assertEqual(g.floor, 2)
+        self.assertNotEqual(g.seed, first_seed)
+        self.assertEqual((g.player.hp, g.player.medkits), (6, 2))
+        self.assertEqual(g.phase, "arrive")
+        self.assertEqual(g.player.tile, g.dungeon.spawn)
+
+    def to_video(self):
+        g = play(self.g)
+        g.horde.zombies = []
+        g.player = Player(g.anims, g.dungeon.elevator_out.front[0])
+        g.action()
+        self.run_frames(8 / S.ELEVATOR_FPS + S.ELEVATOR_WALK_TIME + 8 / S.ELEVATOR_FPS + 0.2)
+        return g
+
+    def test_video_plays_frames_and_can_be_skipped(self):
+        g = self.to_video()
+        self.assertEqual(g.phase, "video")
+        first = g.video.index
+        self.run_frames(1.0)
+        self.assertGreater(g.video.index, first + 20)       # ~24 quadros por segundo
+        self.assertEqual(g.video.surface.get_size(), (S.SCREEN_W, S.SCREEN_H))
+        g.end_floor_video()                                 # Espaço/Enter pulam
+        self.assertEqual((g.floor, g.phase), (2, "arrive"))
+
+    def test_without_video_falls_back_to_fade(self):
+        import video
+        saved, video.cv2 = video.cv2, None
+        try:
+            g = self.to_video()
+            self.assertEqual(g.phase, "fade")
+            self.run_frames(S.FLOOR_FADE_TIME + 0.1)
+            self.assertEqual(g.floor, 2)
+        finally:
+            video.cv2 = saved
+
+    def test_zombie_touching_at_exit_attacks(self):
+        g = play(self.g)
+        ex = g.dungeon.elevator_out
+        g.horde.zombies = []
+        g.player = Player(g.anims, ex.front[0])
+        z = Zombie((ex.front[0][0], ex.front[0][1] + 1), None)
+        z.state = IDLE
+        g.horde.zombies.append(z)
+        g.action()
+        self.assertEqual(g.phase, "play")
+        self.assertTrue(g.player.attack_queued)
+
+    def test_away_from_exit_does_not_enter(self):
+        g = play(self.g)
+        g.horde.zombies = []
+        g.action()                                          # no spawn, longe da saída
+        self.assertEqual(g.phase, "play")
+
+    def test_exit_light_pulses_when_near(self):
+        g = play(self.g)
+        g.horde.zombies = []
+        ex = g.dungeon.elevator_out
+        self.run_frames(0.1)
+        self.assertEqual(g.el_out.anim, "closed")
+        g.player = Player(g.anims, (ex.front[0][0], ex.front[0][1] + 2))
+        self.run_frames(0.1)
+        self.assertEqual(g.el_out.anim, "idle")
+
+    def test_new_run_key_resets_floor(self):
+        g = self.g
+        g.floor = 3
+        g.new_run(123)
+        self.assertEqual((g.floor, g.run_seed, g.seed), (1, 123, 123))
+
+
+class _Keys(dict):
+    def __getitem__(self, k):
+        return dict.get(self, k, False)
 
 
 class _NoKeys:

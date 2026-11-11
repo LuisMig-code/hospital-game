@@ -2,6 +2,16 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-11 — Vídeo na troca de andar
+- Depois que as portas da saída fecham, toca em tela cheia o vídeo do elevador (portas abrindo para a luz, ~7,9 s, com som), com "Andar N" aparecendo no fim; Espaço/Enter pulam.
+- Quadros lidos com OpenCV (`opencv-python-headless`, nova dependência); som extraído para `elevator_video.wav` por `tools/extract_video_audio.py`. Sem OpenCV, volta a tela escura de antes.
+
+## 2026-11-11 — Elevadores e andares
+- O andar começa com o personagem saindo do **elevador de chegada** (animação das portas abrindo com ele dentro); o spawn é a frente desse elevador.
+- O **elevador de saída** fica numa sala sorteada entre as mais longe; pulsa a luz com o personagem perto. **Espaço** na frente dele: portas abrem, ele entra, portas fecham, "Andar N" e o próximo andar começa, **mantendo vida e kits**.
+- Game over (e a tecla R) começam uma **run nova**: seed aleatória, andar 1. HUD mostra o andar.
+- Sheets do elevador recortados (chegada e saída); o vídeo `.mp4` não é usado.
+
 ## 2026-11-11 — Camas maiores
 - Camas de pé passam a 2×2 tiles (52 px de largura, ~2,4 tiles de altura no desenho) e camas deitadas/quebrada a 3×2 (88–90 px). Nas laterais da Enfermaria ficam só criados-mudos, suportes de soro e gaveteiros.
 

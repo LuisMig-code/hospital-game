@@ -54,15 +54,22 @@ class DungeonTests(unittest.TestCase):
                 self.assertNotEqual(d.grid[y][0], FLOOR)
                 self.assertNotEqual(d.grid[y][d.width - 1], FLOOR)
 
-    def test_spawn_is_nearest_floor_to_top_left(self):
+    def test_spawn_is_in_front_of_arrival_elevator(self):
+        """O spawn é a frente do elevador de chegada, na sala mais perto do
+        canto de cima à esquerda (pelo caminho)."""
+        from elevators import corner_floor, path_distances
         for seed in range(50):
             d = generate(seed)
             sx, sy = d.spawn
             self.assertTrue(d.is_walkable(sx, sy))
             self.assertNotIn((sx, sy), d.door_at)
-            best = min(x * x + y * y for y in range(d.height) for x in range(d.width)
-                       if d.grid[y][x] == FLOOR and (x, y) not in d.door_at)
-            self.assertEqual(sx * sx + sy * sy, best, seed)
+            self.assertEqual((sx, sy), d.elevator_in.front[0])
+            dist = path_distances(d, corner_floor(d))
+            room_d = {id(r): min(dist.get((x, y), 10 ** 9) for y in range(r.y, r.y + r.h)
+                                 for x in range(r.x, r.x + r.w)) for r in d.rooms}
+            nearer = [r for r in d.rooms if room_d[id(r)] < room_d[id(d.elevator_in.room)]]
+            from elevators import positions
+            self.assertTrue(all(not positions(d, r) for r in nearer), seed)
 
     def test_no_one_tile_wide_passages(self):
         """Todo tile de chão faz parte de algum bloco 2x2 de chão

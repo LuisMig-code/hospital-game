@@ -16,6 +16,8 @@
 | `themes.py` | Dados das salas temáticas: catálogo de props (pegada, colisão, recorte) e os 6 temas + corredor | `PROPS`, `THEMES`, `CORRIDOR` |
 | `furnish.py` | Escolhe o tema de cada sala e posiciona os móveis sem fechar passagens (sem pygame) | `furnish`, `PlacedProp`, `spawn_room` |
 | `props.py` | Recorte e desenho dos props (móveis a cada quadro, detalhes no mapa) | `PropArt`, `load_prop_images`, `slice_sheet` |
+| `elevators.py` | Elevadores de chegada e saída: posição (sem pygame) e estado da animação | `place_elevators`, `Elevator`, `ElevatorActor` |
+| `video.py` | Vídeo da troca de andar: quadros do `.mp4` pelo OpenCV e som pelo mixer | `FloorVideo` |
 | `items.py` | Kit médico no chão: spawn por sala (40%), flutuar e desenho | `MedKit`, `spawn_medkits` |
 | `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando, levando dano, pegando e usando o kit), do kit médico e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_kit_animations`, `load_medkit_item`, `load_zombie_animations` |
 | `tileset.py` | Piso, paredes e portas novos (recorte) e montagem do mapa por tema | `Tileset`, `render_map`, `theme_at`, `load_floor_blocks`, `load_wall_pieces`, `load_door_pieces` |
@@ -35,13 +37,13 @@ tileset ► dungeon (FLOOR), settings
 sprites ► settings
 ```
 
-`dungeon.py`, `doors.py`, `fov.py`, `themes.py` e `furnish.py` não dependem de pygame, então podem ser testados sem janela.
+`dungeon.py`, `doors.py`, `fov.py`, `themes.py`, `furnish.py` e `elevators.py` não dependem de pygame, então podem ser testados sem janela.
 
 ## Ciclo de vida
 
 1. `Game.__init__` abre a janela, carrega as animações (`load_animations`) e o tileset (`Tileset()`). Se o tileset falhar ao carregar, o jogo cai para as cores sólidas verde/cinza.
-2. `Game.new_level(seed)` (no início e ao apertar **R**):
-   - gera a dungeon (`generate`), já com as portas (fechadas), os temas das salas e os móveis;
+2. `Game.new_run(seed)` (no início, ao apertar **R** e depois do game over) zera o andar e chama `Game.new_level(seed)`; `Game.next_floor()` (saindo pelo elevador) chama `new_level` com a seed do próximo andar mantendo vida e kits. `new_level`:
+   - gera a dungeon (`generate`), já com as portas (fechadas), os elevadores, os temas das salas e os móveis;
    - pré-renderiza o mapa inteiro numa `Surface` (`build_map_surface` → `render_map`) e o grid (`build_grid_surface`) — o mapa só muda na área de uma porta quando ela abre/fecha;
    - cria o `Player` no spawn (chão mais próximo do canto superior esquerdo);
    - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn) e os kits médicos (`spawn_medkits`);

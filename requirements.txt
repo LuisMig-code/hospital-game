@@ -1,1 +1,3 @@
 pygame-ce>=2.5
+opencv-python-headless>=4.8   # vídeo da troca de andar (sem ele, a troca é só uma tela escura)
+# av                          # só para tools/extract_video_audio.py (extrair o som do vídeo)

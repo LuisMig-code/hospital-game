@@ -117,6 +117,25 @@ Três sheets com fundo transparente (e uma névoa de alpha baixo em volta das pe
 
 > O tileset antigo (`assets/background/hospital-tiles.png`) continua no repositório, mas não é mais usado.
 
+## Elevador — `assets/cenario/*Elevator*.png`
+
+Dois sheets de 1402×1122 px, fundo transparente, 4 linhas; os quadros encostam uns nos outros, então as colunas usam a **grade fixa de 175,25 px** (1402 / 8) e as linhas a projeção do alpha. Cada quadro é recortado no desenho e escalado para `ELEVATOR_WIDTH` (68 px, ~2 tiles; ~85 px de altura) — `sprites.load_elevator_animations`.
+
+| Sheet | Linha | Conteúdo | Animação |
+|---|---|---|---|
+| `Haunted Elevator Sprite Sheet_chegada.png` | 0 | portas abrindo, luz azul (8) | sem uso |
+| | 1 | portas fechando (8) | `close` (depois da chegada) |
+| | 2 | portas abrindo **com o personagem dentro** (8) | `arrive` |
+| | 3 | peças soltas (batente, folhas, interiores) | sem uso |
+| `Pixel Art Elevator Sprite Sheet_elevator out.png` | 0 | fechado, luz pulsando (6) | `idle` (saída com o personagem perto) |
+| | 1 | portas abrindo, luz amarela (8) | `open_exit` (e ao contrário para fechar) |
+| | 2 | variações fechadas/quebradas (6) | `closed` = col. 1 (fechado aceso) |
+| | 3 | luz amarela no chão (5) | sem uso |
+
+### Vídeo — `assets/cenario/Elevator_doors_opening_with_glow_50d001eb.mp4`
+- 1280×720 (o tamanho da tela), 24 fps, 190 quadros (~7,9 s), H.264 + som AAC estéreo 48 kHz. Tocado na troca de andar (`video.py`, com OpenCV).
+- O som está também em `assets/cenario/elevator_video.wav` (16 bits, estéreo, 48 kHz), gerado por `tools/extract_video_audio.py` (usa o pacote `av`). Se trocar o vídeo, rode a ferramenta de novo.
+
 ## Conferindo os recortes
 
 ```bash
@@ -127,7 +146,7 @@ Gera:
 - `assets/personagem/frames/<animação>_<i>.png` e `preview.png` (todos os frames com borda vermelha);
 - `assets/background/pieces/`: blocos de piso (`floor_<nome>.png`), peças de parede (`wall_<linha>_<coluna>.png`) e portas (`door_<coluna>.png`);
 - `assets/cenario/pieces/`: cada prop do catálogo (`<nome>.png`) e um `preview_<sheet>.png` com todas as peças numeradas (linha,coluna) — use para achar os índices de `themes.PROPS`;
-- quadros de zumbi, ataque, dano e kit médico nas pastas de cada um.
+- quadros de zumbi, ataque, dano, kit médico e elevador (`assets/cenario/elevator_frames/`) nas pastas de cada um.
 
 Essas pastas estão no `.gitignore`, porque o jogo faz os recortes sozinho ao abrir.
 

@@ -50,6 +50,8 @@ class Dungeon:
     props: list = field(default_factory=list)      # furnish.PlacedProp com colisão
     blocked: set = field(default_factory=set)      # tiles ocupados por móveis
     decals: list = field(default_factory=list)     # furnish.PlacedProp sem colisão (no chão)
+    elevator_in: object = None                     # elevators.Elevator de chegada
+    elevator_out: object = None                    # elevators.Elevator de saída
 
     def is_floor(self, tx, ty):
         """Chão no grid (ignora o estado das portas)."""
@@ -76,15 +78,12 @@ class Dungeon:
 
     @property
     def spawn(self):
-        """Chão mais próximo do canto superior esquerdo (que não seja porta)."""
-        best = None
-        for y, row in enumerate(self.grid):
-            for x, cell in enumerate(row):
-                if cell == FLOOR and (x, y) not in self.door_at:
-                    key = (x * x + y * y, y, x)
-                    if best is None or key < best:
-                        best = key
-        return (best[2], best[1])
+        """Onde o personagem começa: na frente do elevador de chegada (sem
+        elevador, o chão mais perto do canto de cima à esquerda)."""
+        if self.elevator_in is not None:
+            return self.elevator_in.front[0]
+        from elevators import corner_floor
+        return corner_floor(self)
 
 
 class _Leaf:
@@ -173,7 +172,11 @@ def generate(seed, width=80, height=60):
     from doors import place_doors  # import local: doors usa tipos deste módulo
     place_doors(d, rng)
 
-    # 5) Temas e móveis (rng próprio: não muda o resto da geração)
+    # 5) Elevadores de chegada (o spawn) e de saída
+    from elevators import place_elevators
+    place_elevators(d, random.Random(seed ^ 0xE1E7))
+
+    # 6) Temas e móveis (rng próprio: não muda o resto da geração)
     from furnish import furnish
     furnish(d, random.Random(seed ^ 0xF0E1))
     return d

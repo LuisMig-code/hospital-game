@@ -20,9 +20,11 @@ from fov import Vision
 from lighting import FogLayer, Light
 from player import Player
 from combat import FloatingText, apply_attack, texts_for
+from elevators import ElevatorActor
+from video import FloorVideo
 from items import spawn_medkits
-from sprites import (load_animations, load_attack_animations, load_damage_animations, load_kit_animations,
-                     load_medkit_item, load_zombie_animations)
+from sprites import (load_animations, load_attack_animations, load_damage_animations, load_elevator_animations,
+                     load_kit_animations, load_medkit_item, load_zombie_animations)
 from zombies import Horde, touching
 from doors import try_toggle
 from props import PropArt
@@ -70,6 +72,7 @@ class Game:
         self.anims.update(load_damage_animations(target_height=self.anims["idle"][0].get_height()))
         self.anims.update(load_kit_animations(target_height=self.anims["idle"][0].get_height()))
         self.medkit_frames, self.medkit_icon = load_medkit_item()
+        self.elevator_anims = load_elevator_animations()
         self.time = 0.0                    # segundos de jogo (animação dos itens)
         self.zombie_anims = load_zombie_animations()
         self.small_font = pygame.font.SysFont("consolas", 15)
@@ -90,18 +93,36 @@ class Game:
         self.message, self.message_until = "", 0
         self.zoom = S.ZOOM_MIN             # zoom atual (vai suavemente até o alvo)
         self.zoom_target = S.ZOOM_MIN      # zoom pedido pela roda do mouse
+        self.new_run(seed)
+
+    # ---------------------------------------------------------------- andares
+    def new_run(self, seed):
+        """Run nova: andar 1, vida cheia, sem kits."""
+        self.run_seed = seed
+        self.floor = 1
         self.new_level(seed)
 
+    def next_floor(self):
+        """Saiu pelo elevador: próximo andar (dungeon nova, seed derivada da
+        run), mantendo a vida e os kits."""
+        hp, kits = self.player.hp, self.player.medkits
+        self.floor += 1
+        self.new_level(f"{self.run_seed}-{self.floor}")
+        self.player.hp, self.player.medkits = hp, kits
+
     def new_level(self, seed):
+        if getattr(self, "video", None) is not None:      # R no meio do vídeo: para o som
+            self.video.close()
         self.dungeon = generate(seed, S.MAP_W, S.MAP_H)
         self.map_surf = build_map_surface(self.dungeon, self.tiles, self.props)
         self.current_room = None           # sala onde o personagem está (mostra o nome ao entrar)
         self.grid_surf = build_grid_surface(self.dungeon)
         self.player = Player(self.anims, self.dungeon.spawn)
         # Zumbis enterrados nas salas (longe do spawn); saem do chão quando vistos
-        self.horde = Horde(self.dungeon, avoid=[self.dungeon.spawn])
+        exit_front = self.dungeon.elevator_out.front
+        self.horde = Horde(self.dungeon, avoid=[self.dungeon.spawn, *exit_front])
         # Kits médicos no chão (40% das salas), fora dos tiles dos zumbis
-        self.medkits = spawn_medkits(self.dungeon, avoid=[self.dungeon.spawn],
+        self.medkits = spawn_medkits(self.dungeon, avoid=[self.dungeon.spawn, *exit_front],
                                      taken={z.tile for z in self.horde.zombies})
         self.texts = []                    # números de dano flutuando
         self.seed = seed
@@ -111,21 +132,34 @@ class Game:
         # Névoa: começa toda preta; tiles descobertos viram "escurecidos"
         self.vision = Vision(self.dungeon, S.VISION_RADIUS)
         self.fog = FogLayer(self.dungeon.width, self.dungeon.height)
+        # Elevadores: o andar começa com a chegada (personagem saindo do elevador)
+        self.exit_avoid = list(self.dungeon.elevator_out.front)
+        self.el_in = ElevatorActor(self.dungeon.elevator_in, "arrive")
+        self.el_out = ElevatorActor(self.dungeon.elevator_out, "closed")
+        self.phase = "arrive"              # arrive -> play -> exit -> video (ou fade) -> próximo andar
+        self.video = None
+        self.phase_time = 0.0
+        self.player_visible = False
         self.update_vision()
-        print(f"Seed: {seed} -> {len(self.dungeon.rooms)} salas")
+        print(f"Seed: {seed} -> {len(self.dungeon.rooms)} salas (andar {getattr(self, 'floor', 1)})")
 
     def action(self):
         """Espaço, nesta ordem:
         1. zumbi colado no personagem → ataca (atacar tem preferência);
-        2. parado em cima de um kit médico → pega e guarda;
-        3. porta à frente (ou embaixo) → abre/fecha;
-        4. senão → ataca na direção em que ele está virado.
-        Levando dano, atacando ou pegando/usando kit: nada."""
+        2. parado na frente do elevador de saída → entra (próximo andar);
+        3. parado em cima de um kit médico → pega e guarda;
+        4. porta à frente (ou embaixo) → abre/fecha;
+        5. senão → ataca na direção em que ele está virado.
+        Levando dano, atacando, pegando/usando kit ou fora do jogo normal
+        (chegada/saída do elevador): nada."""
         p = self.player
-        if p.busy:
+        if p.busy or self.phase != "play":
             return
         if self.zombie_touching():
             p.request_attack()
+            return
+        if self.at_exit():
+            self.enter_elevator()
             return
         kit = self.medkit_at(p.tile) if p.target is None else None
         if kit is not None and p.start_pickup():
@@ -135,6 +169,83 @@ class Game:
             return
         if self.toggle_door() is None:
             p.request_attack()
+
+    def at_exit(self):
+        p = self.player
+        return p.target is None and p.tile in self.dungeon.elevator_out.front
+
+    def enter_elevator(self):
+        """Começa a saída: as portas abrem, o personagem entra, as portas
+        fecham e a tela escurece (veja update_elevators)."""
+        p = self.player
+        self.phase, self.phase_time = "exit", 0.0
+        self.exit_stage = "open"
+        self.el_out.play("open_exit")
+        p.facing, p.running = "up", False
+        self.exit_from = (p.x, p.y)
+
+    def update_elevators(self, dt):
+        """Animações dos elevadores e as fases de chegada/saída do andar."""
+        fps = S.ELEVATOR_FPS
+        self.phase_time += dt
+        self.el_in.update(dt, fps)
+        self.el_out.update(dt, fps)
+        p = self.player
+        if self.phase == "arrive":
+            if self.el_in.done:                # portas abertas: ele sai e elas fecham
+                self.player_visible = True
+                p.facing = "down"
+                self.el_in.play("close")
+                self.phase, self.phase_time = "play", 0.0
+                self.show_message(f"Andar {self.floor} — encontre o elevador", 2.5)
+        elif self.phase == "play":
+            ex = self.dungeon.elevator_out
+            near = min(max(abs(p.tile[0] - x), abs(p.tile[1] - y)) for x, y in ex.front) <= S.ELEVATOR_NEAR
+            want = "idle" if near else "closed"
+            if self.el_out.anim != want:
+                self.el_out.play(want, loop=near)
+        elif self.phase == "exit":
+            if self.exit_stage == "open" and self.el_out.done:
+                self.exit_stage, self.phase_time = "walk", 0.0
+            elif self.exit_stage == "walk":
+                k = min(1.0, self.phase_time / S.ELEVATOR_WALK_TIME)
+                ex = self.dungeon.elevator_out
+                tx = (ex.wall[0][0] + 1) * S.TILE                      # meio do elevador
+                ty = (ex.base_y - 0.7) * S.TILE                        # para dentro
+                x0, y0 = self.exit_from
+                p.x, p.y = x0 + (tx - x0) * k, y0 + (ty - y0) * k
+                p.moving = True
+                p._animate(dt)
+                if k >= 1:
+                    self.player_visible = False
+                    self.exit_stage = "close"
+                    self.el_out.play("open_exit", reverse=True)
+            elif self.exit_stage == "close" and self.el_out.done:
+                self.start_floor_video()
+        elif self.phase == "video":
+            self.video.update(dt)
+            if self.video.done:
+                self.end_floor_video()
+        elif self.phase == "fade" and self.phase_time >= S.FLOOR_FADE_TIME:
+            self.next_floor()
+
+    def start_floor_video(self):
+        """Portas fechadas: toca o vídeo do elevador (com som). Sem OpenCV
+        ou sem o arquivo, só escurece a tela com "Andar N"."""
+        self.video = FloorVideo.open()
+        if self.video is None:
+            self.phase, self.phase_time = "fade", 0.0
+            return
+        self.phase, self.phase_time = "video", 0.0
+        self.video.play_sound()
+        self.video.update(0.0)
+
+    def end_floor_video(self):
+        """Fim do vídeo (ou Espaço/Enter para pular): próximo andar."""
+        if self.video is not None:
+            self.video.close()
+            self.video = None
+        self.next_floor()
 
     def zombie_touching(self):
         """Algum zumbi fora do chão e vivo colado no personagem (8 direções,
@@ -244,7 +355,14 @@ class Game:
         último (fica na frente) — o personagem passa por trás de uma estante.
         Com a névoa ligada, só aparecem os zumbis que o personagem está vendo;
         kits e móveis ficam embaixo da névoa (escurecidos fora da visão)."""
-        actors = [(self.player.feet()[1], lambda: self.player.draw(view, cam))]
+        actors = []
+        if self.player_visible:
+            # entrando no elevador: por cima dele (anda para dentro da porta aberta)
+            key = 10 ** 9 if self.phase == "exit" else self.player.feet()[1]
+            actors.append((key, lambda: self.player.draw(view, cam)))
+        for actor in (self.el_in, self.el_out):
+            ev = actor.elevator
+            actors.append((ev.base_y * S.TILE - 1, lambda a=actor: self.draw_elevator(view, cam, a)))
         if self.props is not None:   # móveis: só os que aparecem na tela
             view_rect = pygame.Rect(cam, view.get_size())
             for pp in self.dungeon.props:
@@ -258,6 +376,49 @@ class Game:
             actors.append((z.feet_y(), lambda z=z: z.draw(view, cam, self.zombie_anims)))
         for _, draw in sorted(actors, key=lambda a: a[0]):
             draw()
+
+    def draw_elevator(self, view, cam, actor):
+        ev = actor.elevator
+        img = self.elevator_anims[actor.anim][actor.frame(S.ELEVATOR_FPS)]
+        bottom = (ev.wall[0][0] + 1) * S.TILE - cam[0], ev.base_y * S.TILE - cam[1]
+        view.blit(img, img.get_rect(midbottom=(round(bottom[0]), round(bottom[1]))))
+
+    def draw_floor_video(self):
+        """Vídeo do elevador em tela cheia: surge do preto e, no fim, mostra
+        o próximo andar por cima."""
+        v = self.video
+        if self.phase != "video" or v is None or v.surface is None:
+            return False
+        self.screen.blit(v.surface, (0, 0))
+        if v.time < 0.4:                                          # surge do preto
+            shade = pygame.Surface((S.SCREEN_W, S.SCREEN_H), pygame.SRCALPHA)
+            shade.fill((0, 0, 0, round(255 * (1 - v.time / 0.4))))
+            self.screen.blit(shade, (0, 0))
+        left = v.duration - v.time
+        if left < S.FLOOR_VIDEO_TEXT_TIME:                       # "Andar N" aparecendo
+            a = round(255 * min(1.0, 1 - left / S.FLOOR_VIDEO_TEXT_TIME) * 1.6) if left > 0 else 255
+            a = max(0, min(255, a))
+            text = f"Andar {self.floor + 1}"
+            center = (S.SCREEN_W // 2, S.SCREEN_H // 2)
+            for color, off in (((20, 15, 10), (3, 3)), ((40, 30, 20), (0, 0))):
+                img = self.big_font.render(text, True, color)
+                img.set_alpha(a)
+                self.screen.blit(img, img.get_rect(center=(center[0] + off[0], center[1] + off[1])))
+        hint = self.small_font.render("[Espaço] pular", True, (235, 235, 235))
+        self.screen.blit(hint, hint.get_rect(bottomright=(S.SCREEN_W - 12, S.SCREEN_H - 10)))
+        return True
+
+    def draw_floor_fade(self):
+        """Entre andares: tela escurece e mostra o próximo andar."""
+        if self.phase != "fade":
+            return
+        k = min(1.0, self.phase_time / (S.FLOOR_FADE_TIME * 0.5))
+        shade = pygame.Surface((S.SCREEN_W, S.SCREEN_H), pygame.SRCALPHA)
+        shade.fill((0, 0, 0, round(255 * k)))
+        self.screen.blit(shade, (0, 0))
+        img = self.big_font.render(f"Andar {self.floor + 1}", True, (230, 230, 220))
+        img.set_alpha(round(255 * k))
+        self.screen.blit(img, img.get_rect(center=(S.SCREEN_W // 2, S.SCREEN_H // 2)))
 
     def _damage_surface(self, text, color):
         """Número de dano com contorno escuro (cacheado)."""
@@ -305,7 +466,7 @@ class Game:
     def draw_hud(self):
         p = self.player
         tx, ty = p.tile
-        hud = (f"Seed: {self.seed_label}   Tile: ({tx}, {ty})   Zoom: {self.zoom:.1f}x   "
+        hud = (f"Andar {self.floor}   Seed: {self.run_seed}   Tile: ({tx}, {ty})   Zoom: {self.zoom:.1f}x   "
                f"Abatidos: {self.horde.killed}")
         showing_msg = self.message and pygame.time.get_ticks() < self.message_until
 
@@ -426,13 +587,21 @@ class Game:
 
     def step(self, dt, keys):
         """Um quadro da lógica do jogo (sem desenhar)."""
+        self.update_elevators(dt)
+        if self.phase in ("exit", "video", "fade"):   # entrando no elevador: o andar "pausa"
+            self.time += dt
+            self.light.update(dt)
+            self.update_zoom(dt)
+            return
         self.zombie_hits(self.horde.update(dt, self.player, self.vision.visible))
         self.hit_flash = max(0.0, self.hit_flash - dt)
-        if self.player.dead:               # game over: recomeça a mesma dungeon
+        if self.player.dead:               # game over: run nova (andar 1, outra seed)
             self.dead_time += dt
             if self.dead_time >= S.GAME_OVER_TIME:
-                self.new_level(self.seed)
+                self.new_run(random.randrange(1_000_000))
                 return
+        if self.phase == "arrive":         # saindo do elevador: sem controle
+            keys = _NO_KEYS
         impact = self.player.update(dt, keys, self.dungeon, blocked=self.horde.blocked_tiles())
         if impact is not None:   # quadro do golpe: dano em área nos zumbis
             p = self.player
@@ -459,13 +628,16 @@ class Game:
                 if e.type == pygame.QUIT or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
                     return
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_r:
-                    self.new_level(random.randrange(1_000_000))
+                    self.new_run(random.randrange(1_000_000))
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_g:
                     self.show_grid = not self.show_grid
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_v:
                     self.show_fog = not self.show_fog
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_h:
                     self.use_medkit()
+                if e.type == pygame.KEYDOWN and self.phase == "video" and e.key in (pygame.K_SPACE, pygame.K_RETURN):
+                    self.end_floor_video()             # pula o vídeo
+                    continue
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
                     self.action()
                 if e.type == pygame.MOUSEWHEEL:
@@ -473,11 +645,21 @@ class Game:
                     self.change_zoom(getattr(e, "precise_y", e.y))
 
             self.step(dt, pygame.key.get_pressed())
-            self.draw_world()
-            self.draw_hit_flash()
-            self.draw_hud()
-            self.draw_game_over()
+            if not self.draw_floor_video():    # vídeo da troca de andar ocupa a tela toda
+                self.draw_world()
+                self.draw_hit_flash()
+                self.draw_hud()
+                self.draw_game_over()
+                self.draw_floor_fade()
             pygame.display.flip()
+
+
+class _NoKeys:
+    def __getitem__(self, key):
+        return False
+
+
+_NO_KEYS = _NoKeys()
 
 
 def main():

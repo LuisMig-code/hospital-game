@@ -196,6 +196,10 @@ def _forbidden(dungeon):
                 out.update((x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
     sx, sy = dungeon.spawn
     out.update((sx + dx, sy + dy) for dx in range(-2, 3) for dy in range(-2, 3))
+    for el in (dungeon.elevator_in, dungeon.elevator_out):   # frente dos elevadores livre
+        if el is not None:
+            for fx, fy in el.front:
+                out.update((fx + dx, fy + dy) for dx in range(-2, 3) for dy in range(0, 3))
     return out
 
 

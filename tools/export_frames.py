@@ -49,6 +49,7 @@ def main():
     export_attack()
     export_damage()
     export_medkit()
+    export_elevator()
 
 
 def export_tileset():
@@ -172,6 +173,27 @@ def export_medkit():
         print(f"kit {name:13s} {len(frs)} quadros")
     pygame.image.save(preview, str(out / "preview.png"))
     print(f"Quadros do kit médico salvos em {out}")
+
+
+def export_elevator():
+    """Quadros das animações do elevador (escala do jogo, ampliados 2x no preview)."""
+    from sprites import load_elevator_animations
+
+    out = ASSETS / "cenario" / "elevator_frames"
+    out.mkdir(parents=True, exist_ok=True)
+    anims = load_elevator_animations()
+    z = 2
+    cw, ch = S.ELEVATOR_WIDTH + 6, 95
+    cols = max(len(f) for f in anims.values())
+    preview = pygame.Surface((cols * cw * z, len(anims) * ch * z))
+    preview.fill((40, 45, 45))
+    for r, (name, frames) in enumerate(anims.items()):
+        for c, img in enumerate(frames):
+            pygame.image.save(img, str(out / f"{name}_{c}.png"))
+            preview.blit(pygame.transform.scale_by(img, z), (c * cw * z, r * ch * z))
+        print(f"elevador {name:10s} {len(frames)} quadros")
+    pygame.image.save(preview, str(out / "preview.png"))
+    print(f"Quadros do elevador salvos em {out}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Testes
 
-Os testes usam `unittest` (biblioteca padrão) e rodam sem abrir janela. `test_tileset.py` usa `SDL_VIDEODRIVER=dummy`.
+Os testes usam `unittest` (biblioteca padrão) e rodam sem abrir janela (e sem som: `test_controls.py` usa `SDL_AUDIODRIVER=dummy`). `test_tileset.py` usa `SDL_VIDEODRIVER=dummy`.
 
 ```bash
 venv\Scripts\python.exe -m unittest discover tests        # todos
@@ -15,7 +15,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - `normalize_seed`: `"123"` vira 123 e textos são estáveis.
 - Em 200 seeds (com todas as portas abertas): mais de 3 salas, **todo o chão sem móvel é alcançável** a partir do spawn (flood fill) e a borda é sempre parede.
 - Em 200 seeds: **não existe passagem de 1 tile de largura** no layout (todo tile de chão faz parte de algum bloco 2×2 de chão, sem contar os móveis).
-- O spawn é o chão (não porta) mais próximo do canto superior esquerdo.
+- O spawn é a frente do elevador de chegada, na sala mais perto (pelo caminho) do canto de cima à esquerda que tem lugar para ele.
 
 ### `tests/test_doors.py`
 - Todas as seeds têm portas, e há portas nos 4 lados no conjunto das seeds.
@@ -51,7 +51,14 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 ### `tests/test_controls.py`
 - Espaço olhando para uma porta: abre/fecha e não ataca; sem porta por perto: ataca; dentro de uma porta aberta: não fecha nem ataca; com zumbi na porta: não fecha.
 - Ordem do Espaço: kit embaixo → pega (some do chão, conta 1, animação de pegar); zumbi colado (de lado ou na diagonal) → ataca e não pega; zumbi longe ou enterrado não impede pegar; sem kit nem porta → ataca; ocupado → nada; zumbi na porta → a porta não fecha e o Espaço ataca. H: "Sem kit médico", "Vida cheia", e cura +2 com o número verde.
-- Game over: golpe de zumbi tira vida e acende a moldura vermelha; vida 0 → depois de `GAME_OVER_TIME` recomeça a mesma seed com vida cheia no spawn.
+- Game over: golpe de zumbi tira vida e acende a moldura vermelha; vida 0 → depois de `GAME_OVER_TIME` começa uma run nova (outra seed, andar 1, vida cheia, sem kits) no spawn.
+- Elevadores: na chegada o personagem fica escondido e sem controle (nem anda nem ataca) e depois o elevador fecha; Espaço na frente da saída entra (e não ataca), Espaço durante a saída não faz nada, e a sequência (com o vídeo) leva ao andar 2 com outra seed mantendo vida e kits; o vídeo avança ~24 quadros por segundo em tela cheia e pode ser pulado; sem OpenCV, a troca usa a tela escura; com zumbi colado na frente da saída, ataca; longe da saída não entra; a luz da saída pulsa com o personagem perto; `new_run` volta ao andar 1.
+
+### `tests/test_elevators.py`
+- Em 100 seeds: os dois elevadores existem, ficam em 2 tiles de parede alta na parede de cima da sala, com a frente andável, sem móvel e longe de portas.
+- O spawn é a frente da chegada; a saída fica noutra sala, alcançável, entre a metade mais longe (ou mais perto só se nenhuma longe tiver lugar) — e longe em mais de 90% das seeds; posição determinística.
+- Animação: toca uma vez e para no último quadro, ao contrário começa do último, em loop dá a volta.
+- Sprites: quantidade de quadros de cada animação, 68 px de largura, entre 2 e 3 tiles de altura.
 
 ### `tests/test_fov.py`
 - A origem é sempre visível; nada fora do raio é visível.

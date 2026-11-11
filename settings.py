@@ -7,6 +7,10 @@ CHARACTER_SHEET = ASSETS / "personagem" / "Chibi Character Animation Sprite Shee
 FLOOR_SHEET = ASSETS / "background" / "Seamless Grungy Hospital Floor Tileset.png"
 WALL_SHEET = ASSETS / "background" / "Pixel Hospital Wall Tileset.png"
 DOOR_SHEET = ASSETS / "background" / "Industrial Teal Door Tile Sprite Sheet.png"
+ELEVATOR_ARRIVE_SHEET = ASSETS / "cenario" / "Haunted Elevator Sprite Sheet_chegada.png"
+ELEVATOR_EXIT_SHEET = ASSETS / "cenario" / "Pixel Art Elevator Sprite Sheet_elevator out.png"
+FLOOR_VIDEO = ASSETS / "cenario" / "Elevator_doors_opening_with_glow_50d001eb.mp4"   # troca de andar
+FLOOR_VIDEO_SOUND = ASSETS / "cenario" / "elevator_video.wav"    # som do vídeo (tools/extract_video_audio.py)
 PROP_SHEETS = {
     "equip": ASSETS / "cenario" / "Detailed Hospital Equipment Sprite Sheet.png",
     "furn": ASSETS / "cenario" / "Hospital Furniture Sprite Sheet on Transparent Background.png",
@@ -124,3 +128,12 @@ HEAL_FRAME = 4                  # quadro da animação em que a vida é recupera
 
 # Salas temáticas e móveis
 FURNITURE_DENSITY = 0.24        # fração máxima dos tiles de uma sala ocupada por móveis
+
+# Elevadores e andares
+ELEVATOR_WIDTH = 68             # largura do elevador na tela (px, ~2 tiles)
+ELEVATOR_FPS = 10               # quadros por segundo das animações do elevador
+ELEVATOR_NEAR = 3               # tiles: perto disso a saída fica com a luz pulsando
+ELEVATOR_WALK_TIME = 0.5        # segundos do personagem entrando no elevador
+FLOOR_FADE_TIME = 1.2           # segundos da tela escura com "Andar N" entre andares (sem o vídeo)
+FLOOR_VIDEO_TEXT_TIME = 2.0     # últimos segundos do vídeo com "Andar N" aparecendo por cima
+FLOOR_VIDEO_VOLUME = 0.8        # volume do som do vídeo (0 a 1)
