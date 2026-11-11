@@ -47,6 +47,7 @@ def main():
     export_zombie()
     export_attack()
     export_damage()
+    export_medkit()
 
 
 def export_tileset():
@@ -134,6 +135,31 @@ def export_damage():
         print(f"dano {name:17s} {len(frames)} quadros")
     pygame.image.save(preview, str(out / "preview.png"))
     print(f"Quadros do dano salvos em {out}")
+
+
+def export_medkit():
+    """Quadros do kit médico (no chão) e do personagem pegando/usando o kit."""
+    from sprites import load_animations, load_kit_animations, load_medkit_item
+
+    out = ASSETS / "personagem" / "medkit_frames"
+    out.mkdir(parents=True, exist_ok=True)
+    idle_h = load_animations()["idle"][0].get_height()
+    anims = load_kit_animations(target_height=idle_h)
+    frames, icon = load_medkit_item()
+    anims["medkit_item"] = frames
+    anims["medkit_icon"] = [icon]
+    z, cw, ch = 3, 50, 56
+    cols = max(len(f) for f in anims.values())
+    preview = pygame.Surface((cols * cw * z, len(anims) * ch * z))
+    preview.fill((40, 45, 45))
+    for r, (name, frs) in enumerate(anims.items()):
+        for c, img in enumerate(frs):
+            pygame.image.save(img, str(out / f"{name}_{c}.png"))
+            big = pygame.transform.scale_by(img, z)
+            preview.blit(big, big.get_rect(midbottom=(c * cw * z + cw * z // 2, (r + 1) * ch * z - 4)))
+        print(f"kit {name:13s} {len(frs)} quadros")
+    pygame.image.save(preview, str(out / "preview.png"))
+    print(f"Quadros do kit médico salvos em {out}")
 
 
 if __name__ == "__main__":

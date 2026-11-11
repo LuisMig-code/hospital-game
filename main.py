@@ -4,7 +4,8 @@ Uso:
     venv\\Scripts\\python.exe main.py            # seed aleatória
     venv\\Scripts\\python.exe main.py 12345      # seed específica (número ou texto)
 
-Controles: WASD/setas movem, Shift corre, Espaço ataca (ou abre/fecha a porta à frente), roda do mouse dá zoom, R gera nova dungeon,
+Controles: WASD/setas movem, Shift corre, Espaço ataca (zumbi colado) / pega o kit embaixo /
+abre/fecha a porta à frente / ataca, H usa o kit médico, roda do mouse dá zoom, R gera nova dungeon,
 G liga/desliga o grid, V liga/desliga a névoa, ESC sai.
 """
 import math
@@ -19,8 +20,10 @@ from fov import Vision
 from lighting import FogLayer, Light
 from player import Player
 from combat import FloatingText, apply_attack, texts_for
-from sprites import load_animations, load_attack_animations, load_damage_animations, load_zombie_animations
-from zombies import Horde
+from items import spawn_medkits
+from sprites import (load_animations, load_attack_animations, load_damage_animations, load_kit_animations,
+                     load_medkit_item, load_zombie_animations)
+from zombies import Horde, touching
 from doors import try_toggle
 from tileset import Tileset, bake_wall_shadows, door_rect, draw_door, init_doors, render_map
 
@@ -62,6 +65,9 @@ class Game:
         # ataque: mesma altura do personagem parado (o desenho do sheet é menor)
         self.anims.update(load_attack_animations(target_height=self.anims["idle"][0].get_height()))
         self.anims.update(load_damage_animations(target_height=self.anims["idle"][0].get_height()))
+        self.anims.update(load_kit_animations(target_height=self.anims["idle"][0].get_height()))
+        self.medkit_frames, self.medkit_icon = load_medkit_item()
+        self.time = 0.0                    # segundos de jogo (animação dos itens)
         self.zombie_anims = load_zombie_animations()
         self.small_font = pygame.font.SysFont("consolas", 15)
         self.big_font = pygame.font.SysFont("consolas", 72, bold=True)
@@ -89,6 +95,9 @@ class Game:
         self.player = Player(self.anims, self.dungeon.spawn)
         # Zumbis enterrados nas salas (longe do spawn); saem do chão quando vistos
         self.horde = Horde(self.dungeon, avoid=[self.dungeon.spawn])
+        # Kits médicos no chão (40% das salas), fora dos tiles dos zumbis
+        self.medkits = spawn_medkits(self.dungeon, avoid=[self.dungeon.spawn],
+                                     taken={z.tile for z in self.horde.zombies})
         self.texts = []                    # números de dano flutuando
         self.seed = seed
         self.seed_label = str(seed)
@@ -101,12 +110,47 @@ class Game:
         print(f"Seed: {seed} -> {len(self.dungeon.rooms)} salas")
 
     def action(self):
-        """Espaço: se há porta à frente (ou o personagem está numa), abre/fecha;
-        senão, ataca na direção em que ele está virado. Levando dano: nada."""
-        if self.player.hurt or self.player.dead:
+        """Espaço, nesta ordem:
+        1. zumbi colado no personagem → ataca (atacar tem preferência);
+        2. parado em cima de um kit médico → pega e guarda;
+        3. porta à frente (ou embaixo) → abre/fecha;
+        4. senão → ataca na direção em que ele está virado.
+        Levando dano, atacando ou pegando/usando kit: nada."""
+        p = self.player
+        if p.busy:
+            return
+        if self.zombie_touching():
+            p.request_attack()
+            return
+        kit = self.medkit_at(p.tile) if p.target is None else None
+        if kit is not None and p.start_pickup():
+            self.medkits.remove(kit)
+            p.medkits += 1
+            self.show_message("Kit médico guardado  [H] usar")
             return
         if self.toggle_door() is None:
-            self.player.request_attack()
+            p.request_attack()
+
+    def zombie_touching(self):
+        """Algum zumbi fora do chão e vivo colado no personagem (8 direções,
+        sem quina de parede no meio)?"""
+        here = self.player.pixel_tile()
+        return any(z.solid and touching(self.dungeon, z.pixel_tile(), here) for z in self.horde.zombies)
+
+    def medkit_at(self, tile):
+        return next((k for k in self.medkits if k.tile == tile), None)
+
+    def use_medkit(self):
+        """H: usa um kit médico (+2 de vida)."""
+        p = self.player
+        if p.busy:
+            return
+        if p.medkits <= 0:
+            self.show_message("Sem kit médico")
+        elif p.hp >= S.PLAYER_HP:
+            self.show_message("Vida cheia")
+        else:
+            p.request_heal()
 
     def toggle_door(self):
         """Espaço: abre/fecha a porta à frente do personagem."""
@@ -186,6 +230,8 @@ class Game:
         embaixo na tela é desenhado por último (fica na frente). Com a névoa
         ligada, só aparecem os zumbis que o personagem está vendo."""
         actors = [(self.player.feet()[1], lambda: self.player.draw(view, cam))]
+        for k in self.medkits:   # kits: a névoa por cima esconde/escurece os fora da visão
+            actors.append((k.feet_y(), lambda k=k: k.draw(view, cam, self.medkit_frames, self.time)))
         for z in self.horde.active():
             if self.show_fog and z.pixel_tile() not in self.vision.visible:
                 continue
@@ -261,6 +307,11 @@ class Game:
             pygame.draw.line(self.screen, (20, 20, 20), (mx, y + 2), (mx, y + h - 3))
         pygame.draw.rect(self.screen, (230, 230, 230), (x, y, w, h), 1, border_radius=4)
         self._text(f"Vida: {p.hp}/{S.PLAYER_HP}", (x + w + 10, y - 2))
+        # Kits médicos guardados
+        kx = x + w + 140
+        self.screen.blit(self.medkit_icon, self.medkit_icon.get_rect(midleft=(kx, y + h // 2)))
+        self._text(f"Kits: {p.medkits}", (kx + self.medkit_icon.get_width() + 6, y - 2),
+                   (150, 230, 140) if p.medkits else S.COLOR_TEXT)
 
         # Barra de estamina
         x, y, w, h = 10, 56, 200, 14
@@ -279,7 +330,7 @@ class Game:
 
         self.draw_controls()
 
-    CONTROLS = ("[WASD] andar  [Shift] correr  [Espaço] atacar/porta  "
+    CONTROLS = ("[WASD] andar  [Shift] correr  [Espaço] atacar/pegar/porta  [H] kit médico  "
                 "[Roda] zoom  [R] nova  [G] grid  [V] névoa  [ESC] sair")
 
     def draw_controls(self):
@@ -371,6 +422,11 @@ class Game:
         for t in self.texts:
             t.update(dt)
         self.texts = [t for t in self.texts if not t.done]
+        if self.player.healed_now:
+            p = self.player
+            self.texts.append(FloatingText(p.x, p.feet()[1] - S.PLAYER_SPRITE_HEIGHT, f"+{S.MEDKIT_HEAL}",
+                                           (110, 235, 110)))
+        self.time += dt
         self.light.update(dt)
         self.update_zoom(dt)
         self.update_vision()
@@ -387,6 +443,8 @@ class Game:
                     self.show_grid = not self.show_grid
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_v:
                     self.show_fog = not self.show_fog
+                if e.type == pygame.KEYDOWN and e.key == pygame.K_h:
+                    self.use_medkit()
                 if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
                     self.action()
                 if e.type == pygame.MOUSEWHEEL:

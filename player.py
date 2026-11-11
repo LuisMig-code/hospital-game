@@ -1,5 +1,6 @@
 """Jogador: movimento tile a tile no grid, corrida com estamina, ataque, vida
-(dano com empurrão, invulnerabilidade, morte) e animação."""
+(dano com empurrão, invulnerabilidade, morte), kit médico (pegar e usar) e
+animação."""
 import math
 
 import pygame
@@ -64,6 +65,13 @@ class Player:
         self.knock_from = None             # (x, y) de onde começou o empurrão
         self.invulnerable = 0.0            # segundos sem levar dano (piscando)
         self.dead = False
+        # kit médico
+        self.medkits = 0                   # kits guardados
+        self.action = None                 # "pickup" (pegando) ou "heal" (usando): sem controle
+        self.action_time = 0.0
+        self.heal_queued = False           # H no meio de um passo: começa ao chegar
+        self.healed = False                # o kit desta animação já curou?
+        self.healed_now = False            # curou neste quadro (main mostra o +2)
 
     # -------------------------------------------------------------------- vida
     def pixel_tile(self):
@@ -82,6 +90,7 @@ class Player:
         # parte do tile onde está desenhado (pode estar no meio de um passo)
         self.tile, self.target = self.pixel_tile(), None
         self.attacking = self.attack_queued = False
+        self.action, self.heal_queued = None, False   # usando o kit: cancela (não gasta)
         self.running = False
         self.turn_timer = 0.0
         x, y = self.tile
@@ -169,6 +178,68 @@ class Player:
         self.stamina = min(S.STAMINA_MAX, self.stamina + S.STAMINA_REGEN_IDLE * dt)  # parado
         return hit
 
+    # -------------------------------------------------------------- kit médico
+    @property
+    def busy(self):
+        """Fazendo algo que trava os controles (dano, ataque, pegar/usar kit)."""
+        return self.hurt or self.dead or self.attacking or self.action is not None
+
+    def can_pickup(self):
+        return not self.busy and self.target is None and not self.attack_queued
+
+    def start_pickup(self):
+        """Espaço em cima de um kit: animação de pegar e guardar (quem conta
+        o kit é o `Game`). Só parado e sem fazer outra coisa."""
+        if not self.can_pickup():
+            return False
+        self._start_action("pickup")
+        return True
+
+    def request_heal(self):
+        """H: usa um kit (precisa ter kit e não estar com a vida cheia). No
+        meio de um passo, começa ao chegar no tile. Devolve se aceitou."""
+        if self.medkits <= 0 or self.hp >= S.PLAYER_HP or self.busy or self.heal_queued:
+            return False
+        self.heal_queued = True
+        return True
+
+    def _start_action(self, kind):
+        self.action, self.action_time = kind, 0.0
+        self.heal_queued = False
+        self.healed = False
+        self.running = False
+
+    def action_anim(self):
+        return f"{self.action}_{self.facing}"
+
+    def action_frames(self):
+        frames = self.anims.get(self.action_anim())
+        if frames:
+            return len(frames)
+        return 6 if self.action == "pickup" else 8
+
+    def _update_action(self, dt):
+        """Pegando/usando o kit: no quadro HEAL_FRAME da cura recupera a vida e
+        gasta o kit (golpe antes disso cancela sem gastar)."""
+        self.action_time += dt
+        fps = S.PICKUP_FPS if self.action == "pickup" else S.HEAL_FPS
+        frame = int(self.action_time * fps)
+        if self.action == "heal" and not self.healed and frame >= S.HEAL_FRAME:
+            self.healed = self.healed_now = True
+            self.medkits -= 1
+            self.hp = min(S.PLAYER_HP, self.hp + S.MEDKIT_HEAL)
+        n = self.action_frames()
+        self.stamina = min(S.STAMINA_MAX, self.stamina + S.STAMINA_REGEN_IDLE * dt)   # parado
+        name = self.action_anim()
+        if frame >= n:
+            self.action = None
+            self.anim, self.frame, self.frame_time = self.idle_anim(), 0, 0.0
+            return
+        if name in self.anims:
+            self.anim, self.frame = name, frame
+        else:
+            self.anim, self.frame = "idle", 0
+
     # ------------------------------------------------------------------ input
     def _try_start_step(self, keys, dungeon, blocked=frozenset(), chained=False):
         """Se uma direção está pressionada, vira para ela e, se o tile vizinho
@@ -230,14 +301,20 @@ class Player:
         Devolve o tile de impacto quando um golpe acerta neste quadro (senão None)."""
         budget = dt
         self.moving = False
+        self.healed_now = False
         if self.hurt:                      # levando dano (ou morto): sem controle
             self.running = False
             self._update_hurt(dt)
             return None
         self.invulnerable = max(0.0, self.invulnerable - dt)
 
-        if self.attack_queued and not self.attacking and self.target is None:
+        if self.attack_queued and not self.attacking and self.target is None and self.action is None:
             self._start_attack()
+        if self.heal_queued and not self.attacking and self.target is None and self.action is None:
+            self._start_action("heal")
+        if self.action is not None:        # pegando/usando o kit: não anda nem vira
+            self._update_action(dt)
+            return None
         if self.attacking:                 # atacando: não anda nem vira
             hit = self._update_attack(dt)
             self._animate(dt)
@@ -261,7 +338,7 @@ class Player:
             if t * speed >= dist - 1e-6:
                 self.x, self.y = tx, ty
                 self.tile, self.target = self.target, None
-                if self.attack_queued:     # chegou no tile: o ataque pedido começa
+                if self.attack_queued or self.heal_queued:   # chegou: o ataque/cura pedido começa
                     break
                 self._try_start_step(keys, dungeon, blocked, chained=True)
             else:

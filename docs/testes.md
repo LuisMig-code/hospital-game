@@ -36,6 +36,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 
 - Parado: continua virado para a direção em que andava (`idle_<direção>`; de frente, `idle`).
 - Golpe de zumbi (`take_hit`): tira 2; empurra 1 tile para o lado oposto (reto e diagonal) e termina no centro do tile; parede atrás ou zumbi atrás → sem empurrão e dano curto; diagonal bloqueada desliza pelo eixo livre; no meio de um passo parte do tile desenhado; cancela o ataque e trava os controles durante o dano; invulnerável durante o dano e por 1 s depois; vida 0 → morto, caído no quadro 4, sem controle.
+- Kit médico: pegar trava os controles durante a animação e só funciona parado; H cura 2 no quadro do brilho e gasta 1 kit; não passa de 10; sem kit ou vida cheia não faz nada; pedido no meio de um passo começa ao chegar; golpe antes da cura cancela sem gastar; golpe cancela a animação de pegar; usando o kit não ataca.
 - Sprite de dano: 6 quadros com empurrão e 4 sem, nas 4 direções, de pé na altura do personagem.
 
 ### `tests/test_combat.py`
@@ -49,6 +50,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 
 ### `tests/test_controls.py`
 - Espaço olhando para uma porta: abre/fecha e não ataca; sem porta por perto: ataca; dentro de uma porta aberta: não fecha nem ataca; com zumbi na porta: não fecha.
+- Ordem do Espaço: kit embaixo → pega (some do chão, conta 1, animação de pegar); zumbi colado (de lado ou na diagonal) → ataca e não pega; zumbi longe ou enterrado não impede pegar; sem kit nem porta → ataca; ocupado → nada; zumbi na porta → a porta não fecha e o Espaço ataca. H: "Sem kit médico", "Vida cheia", e cura +2 com o número verde.
 - Game over: golpe de zumbi tira vida e acende a moldura vermelha; vida 0 → depois de `GAME_OVER_TIME` recomeça a mesma seed com vida cheia no spawn.
 
 ### `tests/test_fov.py`
@@ -66,6 +68,10 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Sem emenda: dentro e fora do quadrado da máscara a escuridão é a mesma, mesmo com o personagem perto do canto da tela.
 - Luz da borda + névoa compensada dão exatamente `FOG_EXPLORED_ALPHA` nos tiles descobertos.
 - Tremulação: desligada fica sempre no nível 0; ligada varia de nível.
+
+### `tests/test_items.py`
+- Em 150 seeds: no máximo 1 kit por sala, em chão, longe do spawn, sem encostar em porta e fora dos tiles dos zumbis; ~40% das salas com kit; mesma seed → mesmos kits.
+- Sprites: 6 quadros de pegar e 8 de usar nas 4 direções, de pé na altura do personagem; kit no chão com 8 quadros, 26 px de largura; ícone de 20 px.
 
 ### `tests/test_zombies.py`
 - Em 60 seeds: cada sala com espaço tem de 3 a 5 zumbis, em tiles distintos de chão dentro da sala, todos enterrados e a mais de 2 tiles do spawn; a mesma seed gera os mesmos zumbis.

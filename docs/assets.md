@@ -66,6 +66,20 @@ O sheet só tem `idle` de frente. Para parado olhando para os lados/costas, `loa
 - O quadro 4 do empurrão (`HURT_FALLEN_FRAME`, caído) é onde o personagem fica no game over.
 - `tools/export_frames.py` salva os quadros em `assets/personagem/damage_frames/` (ignorada pelo git).
 
+## Kit médico
+
+### No chão — `assets/items/medkit/Two-Row Green Medkit Sprite Sheet_stay.png`
+- 2172×724 px, 2 linhas × 8 quadros do kit girando (linha 0 normal, linha 1 com **brilho verde**). O jogo usa a linha com brilho (mais fácil de ver no escuro); linhas e colunas achadas pela projeção do alpha.
+- Escala: o quadro mais largo fica com `MEDKIT_SIZE` (26 px). O quadro 0 da linha 0 vira o **ícone** do HUD (20 px de altura). → `load_medkit_item`.
+
+### Pegando o kit — `assets/personagem/Chibi Medic Kit Animation Sprite Sheet.png`
+- 1536×1024 px, grade **4 linhas × 6 quadros** (256 px). Linhas: de frente, direita, esquerda, costas (a mesma ordem do sheet de andar, conferida comparando com `idle_right`/`idle_left`). → `pickup_<direção>`.
+
+### Usando o kit — `assets/personagem/Chibi Medic Healing Animation Sprite Sheet.png`
+- 1774×887 px, grade **4 linhas × 8 quadros** (221,75 px; as linhas com brilho se encostam, por isso a grade é fixa). Mesma ordem de direções. Quadros 4–6 com o brilho verde da cura. → `heal_<direção>`.
+
+Os dois sheets do personagem passam por `_load_grid_animation`: o "chão" de cada linha é o pixel opaco mais baixo dela; cada quadro vai do topo do desenho até esse chão, é **centralizado pelo cabelo** e escalado para o último quadro de frente (de pé) ter a altura do `idle`. `tools/export_frames.py` salva tudo em `assets/personagem/medkit_frames/` (ignorada pelo git).
+
 ## Tileset do hospital — `assets/background/hospital-tiles.png`
 
 - 530×471 px, RGBA, fundo transparente. **Não é uma grade uniforme**: são 10 peças soltas de tamanhos diferentes, cada uma com um contorno roxo.

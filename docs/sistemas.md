@@ -202,3 +202,25 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 ### Game over
 - Vida 0: o personagem cai (animação de empurrão parada no quadro "caído"), os controles e os zumbis param de agir sobre ele, a tela escurece e aparece **GAME OVER**.
 - Depois de `GAME_OVER_TIME` (3 s) a **mesma dungeon** (mesma seed) recomeça do zero: vida cheia, zumbis enterrados de novo, névoa zerada.
+
+## Kit médico (`items.py`, `player.py`, `main.py`)
+
+### No chão
+- Cada sala tem **40%** de chance (`MEDKIT_ROOM_CHANCE`) de ter **1 kit**, num tile de chão da sala sem encostar em porta, a mais de 2 tiles do spawn e fora dos tiles onde nascem zumbis (`spawn_medkits`, determinístico pela seed). Em 150 seeds, ~40% das salas tiveram kit.
+- O kit **flutua**: gira (8 quadros, `MEDKIT_ANIM_FPS`), sobe e desce devagar (`MEDKIT_BOB`) com uma sombra no chão que encolhe quando ele sobe. Cada kit começa numa fase diferente.
+- Não bloqueia ninguém. É desenhado junto com os personagens (ordem pela altura) e **antes da névoa**: não aparece em tile não descoberto e fica escurecido fora da visão.
+
+### Espaço: atacar tem preferência
+`Game.action` decide, nesta ordem:
+1. personagem ocupado (levando dano, atacando, pegando ou usando kit) → nada;
+2. **zumbi colado** (fora do chão e vivo, em qualquer uma das 8 direções, sem quina de parede no meio — `zombies.touching`) → **ataca**, mesmo com kit embaixo ou porta à frente;
+3. **parado em cima de um kit** → pega: o kit sai do chão, entra na conta (**sem limite**) e toca a animação de pegar e guardar (`pickup_<direção>`, 6 quadros a `PICKUP_FPS`, sem andar nem atacar). Mensagem "Kit médico guardado [H] usar";
+4. porta à frente / embaixo → abre/fecha;
+5. senão → ataca.
+
+### H: usar o kit
+- Sem kit: mensagem "Sem kit médico"; vida cheia: "Vida cheia" (nada é gasto).
+- Senão toca a animação de uso (`heal_<direção>`, 8 quadros a `HEAL_FPS` ≈ 0,67 s). No quadro do brilho verde (`HEAL_FRAME` = 4) recupera **2 de vida** (`MEDKIT_HEAL`, até 10), gasta o kit e mostra um **+2** verde subindo.
+- Pedido no meio de um passo: começa ao chegar no tile. Durante a animação não anda, não vira e não ataca.
+- **Golpe de zumbi antes do brilho cancela e não gasta** o kit (o golpe também interrompe a animação de pegar — o kit já está guardado).
+- HUD: ícone do kit e **"Kits: N"** ao lado da vida.

@@ -13,7 +13,8 @@
 | `combat.py` | Área de dano do golpe, aplicação nos zumbis, números de dano | `damage_map`, `apply_attack`, `FloatingText`, `texts_for` |
 | `fov.py` | Campo de visão e tiles já explorados | `compute_fov`, `Vision`, `in_radius` |
 | `lighting.py` | Névoa suave (1 pixel por tile, ampliada) e luz com queda/tremulação | `FogLayer`, `Light`, `build_light_mask` |
-| `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando e levando dano) e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_zombie_animations` |
+| `items.py` | Kit médico no chão: spawn por sala (40%), flutuar e desenho | `MedKit`, `spawn_medkits` |
+| `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando, levando dano, pegando e usando o kit), do kit médico e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_kit_animations`, `load_medkit_item`, `load_zombie_animations` |
 | `tileset.py` | Recorta o tileset do hospital e desenha o mapa e as portas | `load_pieces`, `Tileset`, `render_map`, `draw_door` |
 
 Dependências entre módulos (setas = "usa"):
@@ -40,11 +41,11 @@ sprites ► settings
    - gera a dungeon (`generate`), já com as portas (fechadas);
    - pré-renderiza o mapa inteiro numa `Surface` (`build_map_surface` → `render_map`) e o grid (`build_grid_surface`) — o mapa só muda na área de uma porta quando ela abre/fecha;
    - cria o `Player` no spawn (chão mais próximo do canto superior esquerdo);
-   - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn);
+   - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn) e os kits médicos (`spawn_medkits`);
    - cria a `Vision` e a névoa (`FogLayer`, toda preta).
 3. A cada frame (`Game.run`):
    - eventos de teclado (R, G, V, Espaço, ESC) e da roda do mouse (→ `change_zoom`);
-   - Espaço → `action()`: primeiro `toggle_door()` (`try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada com `update_vision(force=True)`); se não há porta à frente nem embaixo do personagem → `player.request_attack()`;
+   - Espaço → `action()`: primeiro `toggle_door()` (`try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada com `update_vision(force=True)`); se não há porta à frente nem embaixo do personagem → `player.request_attack()` (antes disso: zumbi colado → ataca; parado em cima de kit → pega); H → `use_medkit()`;
    - a lógica do quadro fica em `Game.step(dt, teclas)` (os testes a usam sem janela):
    - `horde.update(dt, player, vision.visible)` — acorda os zumbis vistos, move os ativos (vagando ou perseguindo) e devolve os que bateram no personagem → `zombie_hits` → `player.take_hit` (vida, empurrão, `-2`, moldura vermelha);
    - personagem morto: conta `GAME_OVER_TIME` e chama `new_level` com a mesma seed;

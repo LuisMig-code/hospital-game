@@ -8,6 +8,9 @@ TILESET = ASSETS / "background" / "hospital-tiles.png"
 ZOMBIE_SHEET = ASSETS / "monster" / "zombie_spritesheet_32x32.png"
 ATTACK_SHEET = ASSETS / "personagem" / "atack_spritsheet.png"
 DAMAGE_SHEET = ASSETS / "personagem" / "damage.png"   # personagem levando dano (com e sem empurrão)
+MEDKIT_SHEET = ASSETS / "items" / "medkit" / "Two-Row Green Medkit Sprite Sheet_stay.png"   # kit no chão
+PICKUP_SHEET = ASSETS / "personagem" / "Chibi Medic Kit Animation Sprite Sheet.png"        # pegando o kit
+HEAL_SHEET = ASSETS / "personagem" / "Chibi Medic Healing Animation Sprite Sheet.png"      # usando o kit
 
 # Tela / grid
 TILE = 32
@@ -101,3 +104,13 @@ HURT_FPS = 12                   # animação de dano (6 quadros com empurrão = 
 PLAYER_INVULN_TIME = 1.0        # segundos invulnerável (piscando) depois do dano
 HIT_SCREEN_FLASH = 0.35         # segundos do vermelho nas bordas da tela ao levar golpe
 GAME_OVER_TIME = 3.0            # segundos de "GAME OVER" antes de recomeçar a mesma dungeon
+
+# Kit médico
+MEDKIT_ROOM_CHANCE = 0.4        # chance de uma sala ter um kit no chão
+MEDKIT_HEAL = 2                 # vida recuperada por kit (até PLAYER_HP)
+MEDKIT_SIZE = 26                # largura do kit na tela, em px
+MEDKIT_ANIM_FPS = 8             # kit girando (8 quadros = 1 volta por segundo)
+MEDKIT_BOB = 3                  # px que o kit sobe e desce flutuando
+PICKUP_FPS = 14                 # animação de pegar e guardar o kit (6 quadros ≈ 0,43 s)
+HEAL_FPS = 12                   # animação de usar o kit (8 quadros ≈ 0,67 s)
+HEAL_FRAME = 4                  # quadro da animação em que a vida é recuperada (começa o brilho)

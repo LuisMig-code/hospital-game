@@ -6,7 +6,8 @@ canal alpha em vez de divisão fixa.
 """
 import pygame
 
-from settings import (ATTACK_SHEET, CHARACTER_SHEET, DAMAGE_SHEET, PLAYER_SPRITE_HEIGHT, ZOMBIE_SHEET,
+from settings import (ATTACK_SHEET, CHARACTER_SHEET, DAMAGE_SHEET, HEAL_SHEET, MEDKIT_SHEET, PICKUP_SHEET,
+                      PLAYER_SPRITE_HEIGHT, ZOMBIE_SHEET,
                       ZOMBIE_SIZE)
 
 # Ordem das linhas no sheet
@@ -382,6 +383,93 @@ def load_damage_animations(target_height=PLAYER_SPRITE_HEIGHT, raw=False):
     for name, src in DAMAGE_MIRROR.items():
         anims[name] = [pygame.transform.flip(f, True, False) for f in anims[src]]
     return anims
+
+
+# ----------------------------------------------------------------- kit médico
+# Sheets do personagem pegando e usando o kit: grade uniforme, uma linha por
+# direção (de frente, direita, esquerda, costas — a mesma ordem do sheet de andar).
+KIT_DIRS = ("down", "right", "left", "up")
+PICKUP_GRID = (4, 6)     # linhas, colunas
+HEAL_GRID = (4, 8)
+
+
+def _load_grid_animation(path, grid, prefix, target_height, raw=False):
+    """{<prefix>_<direção>: [Surface, ...]} de um sheet em grade uniforme.
+
+    A grade é fixa (as linhas do sheet de cura se encostam por causa do
+    brilho). Em cada linha, o "chão" é o pixel opaco mais baixo da linha; cada
+    quadro vai do topo do desenho até esse chão e é centralizado pelo cabelo,
+    como no ataque. A escala faz o último quadro de frente (de pé) ter
+    `target_height`."""
+    sheet = pygame.image.load(str(path))
+    if pygame.display.get_surface() is not None:
+        sheet = sheet.convert_alpha()
+    w, h = sheet.get_size()
+    rows, cols = grid
+    mask = pygame.mask.from_surface(sheet, 40)
+    anims = {}
+    for r, d in enumerate(KIT_DIRS):
+        y0, y1 = round(r * h / rows), round((r + 1) * h / rows)
+        counts = _row_counts(mask, 0, y0, w, y1 - y0)
+        ground = y0 + max(i for i, c in enumerate(counts) if c) + 1
+        frames = []
+        for c in range(cols):
+            x0, x1 = round(c * w / cols), round((c + 1) * w / cols)
+            cell = sheet.subsurface((x0, y0, x1 - x0, ground - y0))
+            bb = _opaque_bbox(cell)
+            crop = cell.subsurface((bb.x, bb.y, bb.w, cell.get_height() - bb.y))
+            hair = _opaque_bbox(crop.subsurface((0, 0, bb.w, max(1, round(bb.h * 0.22)))))
+            frames.append(_anchored(crop.copy(), round(hair.centerx)))
+        anims[f"{prefix}_{d}"] = frames
+    if not raw:
+        scale = target_height / anims[f"{prefix}_down"][-1].get_height()
+        for name, frames in anims.items():
+            anims[name] = [pygame.transform.smoothscale(
+                f, (max(1, round(f.get_width() * scale)), max(1, round(f.get_height() * scale))))
+                for f in frames]
+    return anims
+
+
+def load_kit_animations(target_height=PLAYER_SPRITE_HEIGHT, raw=False):
+    """Animações do personagem com o kit: `pickup_<dir>` (pegar e guardar,
+    6 quadros) e `heal_<dir>` (usar, 8 quadros)."""
+    anims = _load_grid_animation(PICKUP_SHEET, PICKUP_GRID, "pickup", target_height, raw)
+    anims.update(_load_grid_animation(HEAL_SHEET, HEAL_GRID, "heal", target_height, raw))
+    return anims
+
+
+MEDKIT_ROW = 1           # linha com brilho verde (mais fácil de ver no escuro)
+MEDKIT_FRAMES = 8
+
+
+def load_medkit_item(width=None, raw=False):
+    """Kit no chão girando: (quadros, ícone). Colunas pela projeção do alpha.
+    `width`: largura do quadro mais largo na tela (padrão MEDKIT_SIZE)."""
+    from settings import MEDKIT_SIZE
+    width = width or MEDKIT_SIZE
+    sheet = pygame.image.load(str(MEDKIT_SHEET))
+    if pygame.display.get_surface() is not None:
+        sheet = sheet.convert_alpha()
+    w, h = sheet.get_size()
+    mask = pygame.mask.from_surface(sheet, 40)
+    rows = _keep_largest(_runs(_row_counts(mask, 0, 0, w, h)), 2)
+
+    def row_frames(row):
+        y0, y1 = rows[row]
+        cols = _keep_largest(_runs(_col_counts(mask, 0, y0, w, y1 - y0), min_gap=3), MEDKIT_FRAMES)
+        return [sheet.subsurface((x0, y0, x1 - x0, y1 - y0)).copy() for x0, x1 in cols]
+
+    frames = [_anchored(f, f.get_width() // 2) for f in row_frames(MEDKIT_ROW)]
+    plain = row_frames(0)[0]
+    if raw:
+        return frames, plain
+    scale = width / max(f.get_width() for f in frames)
+    frames = [pygame.transform.smoothscale(
+        f, (max(1, round(f.get_width() * scale)), max(1, round(f.get_height() * scale)))) for f in frames]
+    icon_scale = 20 / plain.get_height()
+    icon = pygame.transform.smoothscale(
+        plain, (round(plain.get_width() * icon_scale), round(plain.get_height() * icon_scale)))
+    return frames, icon
 
 
 def _opaque_bbox(img, threshold=40):

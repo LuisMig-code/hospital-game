@@ -2,6 +2,12 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-11 — Kit médico
+- 3 sprites novas recortadas: kit girando (com brilho), personagem pegando e guardando o kit, personagem usando o kit.
+- Cada sala tem **40%** de chance de ter um kit **flutuando** no chão.
+- **Espaço** em cima do kit pega e guarda (sem limite), mas **atacar tem preferência**: com zumbi colado (8 direções) o Espaço ataca — inclusive com porta à frente.
+- **H** usa um kit: animação de cura e **+2 de vida** no brilho; golpe antes disso cancela sem gastar. HUD mostra "Kits: N".
+
 ## 2026-11-10 — Zumbis enxergam mais longe
 - Raio de perseguição dos zumbis aumentado de 3 para **5 tiles** (`ZOMBIE_CHASE_RADIUS`).
 

@@ -123,3 +123,16 @@ Todas as constantes ajustáveis ficam em `settings.py`.
 | `PLAYER_INVULN_TIME` | 1.0 | Segundos invulnerável (piscando) depois do dano |
 | `HIT_SCREEN_FLASH` | 0.35 | Segundos da moldura vermelha ao levar golpe |
 | `GAME_OVER_TIME` | 3.0 | Segundos de GAME OVER antes de recomeçar a mesma dungeon |
+
+## Kit médico
+
+| Constante | Valor | Descrição |
+|---|---|---|
+| `MEDKIT_ROOM_CHANCE` | 0.4 | Chance de uma sala ter um kit no chão |
+| `MEDKIT_HEAL` | 2 | Vida recuperada por kit (até `PLAYER_HP`) |
+| `MEDKIT_SIZE` | 26 | Largura do kit na tela (px) |
+| `MEDKIT_ANIM_FPS` | 8 | Kit girando (8 quadros = 1 volta/s) |
+| `MEDKIT_BOB` | 3 | Pixels que o kit sobe e desce flutuando |
+| `PICKUP_FPS` | 14 | Animação de pegar e guardar (6 quadros ≈ 0,43 s) |
+| `HEAL_FPS` | 12 | Animação de usar o kit (8 quadros ≈ 0,67 s) |
+| `HEAL_FRAME` | 4 | Quadro em que a vida é recuperada |

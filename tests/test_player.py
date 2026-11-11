@@ -441,6 +441,110 @@ class HitTests(unittest.TestCase):
         self.assertFalse(self.hit(p, (3, 5)))                      # morto não leva golpe
 
 
+KIT_ANIMS = dict(HURT_ANIMS)
+for _d in ("right", "left", "up", "down"):
+    KIT_ANIMS[f"pickup_{_d}"] = [pygame.Surface((10, 10))] * 6
+    KIT_ANIMS[f"heal_{_d}"] = [pygame.Surface((10, 10))] * 8
+PICKUP_TIME = 6 / S.PICKUP_FPS
+HEAL_TIME = 8 / S.HEAL_FPS
+HEAL_AT = S.HEAL_FRAME / S.HEAL_FPS
+
+
+class MedKitTests(unittest.TestCase):
+    def hurt_player(self, hp=5, kits=1):
+        p = Player(KIT_ANIMS, (5, 5))
+        p.hp, p.medkits = hp, kits
+        return p
+
+    def test_pickup_locks_controls_then_releases(self):
+        p = Player(KIT_ANIMS, (5, 5))
+        p.facing = "left"
+        self.assertTrue(p.start_pickup())
+        keys = Keys({pygame.K_s: True})
+        for _ in range(round((PICKUP_TIME - 0.05) / DT)):
+            p.update(DT, keys, OpenField())
+            self.assertEqual((p.tile, p.target, p.facing), ((5, 5), None, "left"))
+            self.assertEqual(p.anim, "pickup_left")
+        run(p, keys, 0.6, OpenField())
+        self.assertIsNone(p.action)
+        self.assertNotEqual(p.tile, (5, 5))                 # voltou a andar
+
+    def test_pickup_only_standing_still(self):
+        p = Player(KIT_ANIMS, (5, 5))
+        p.facing = "right"
+        p.update(DT, Keys({pygame.K_d: True}), OpenField())
+        self.assertIsNotNone(p.target)
+        self.assertFalse(p.start_pickup())
+
+    def test_heal_at_heal_frame_spends_one_kit(self):
+        p = self.hurt_player(hp=5, kits=2)
+        self.assertTrue(p.request_heal())
+        t, healed_at = 0.0, None
+        for _ in range(round((HEAL_TIME + 0.1) / DT)):
+            p.update(DT, Keys({pygame.K_d: True}), OpenField())
+            t += DT
+            if p.healed_now:
+                healed_at = t
+            if p.action == "heal":
+                self.assertEqual(p.tile, (5, 5))           # parado
+        self.assertEqual((p.hp, p.medkits), (5 + S.MEDKIT_HEAL, 1))
+        self.assertAlmostEqual(healed_at, HEAL_AT, delta=2 * DT)
+
+    def test_heal_caps_at_max(self):
+        p = self.hurt_player(hp=S.PLAYER_HP - 1)
+        p.request_heal()
+        run(p, Keys(), HEAL_TIME + 0.1, OpenField())
+        self.assertEqual((p.hp, p.medkits), (S.PLAYER_HP, 0))
+
+    def test_no_kit_or_full_life_does_nothing(self):
+        p = self.hurt_player(kits=0)
+        self.assertFalse(p.request_heal())
+        p = self.hurt_player(hp=S.PLAYER_HP)
+        self.assertFalse(p.request_heal())
+        run(p, Keys(), HEAL_TIME, OpenField())
+        self.assertEqual(p.medkits, 1)
+
+    def test_heal_requested_mid_step_starts_on_arrival(self):
+        p = self.hurt_player()
+        p.facing = "right"
+        keys = Keys({pygame.K_d: True})
+        p.update(DT, keys, OpenField())
+        self.assertEqual(p.target, (6, 5))
+        p.request_heal()
+        for _ in range(round(0.5 / DT)):
+            p.update(DT, keys, OpenField())
+            if p.action:
+                break
+        self.assertEqual((p.tile, p.target, p.action), ((6, 5), None, "heal"))
+
+    def test_hit_before_heal_frame_cancels_without_spending(self):
+        p = self.hurt_player(hp=6)
+        p.request_heal()
+        run(p, Keys(), HEAL_AT * 0.5, OpenField())
+        self.assertEqual(p.action, "heal")
+        p.take_hit(S.ZOMBIE_DAMAGE, (6, 5), OpenField())
+        self.assertIsNone(p.action)
+        run(p, Keys(), HEAL_TIME + 0.5, OpenField())
+        self.assertEqual((p.hp, p.medkits), (6 - S.ZOMBIE_DAMAGE, 1))
+
+    def test_hit_cancels_pickup(self):
+        p = Player(KIT_ANIMS, (5, 5))
+        p.start_pickup()
+        p.update(DT, Keys(), OpenField())
+        p.take_hit(S.ZOMBIE_DAMAGE, (6, 5), OpenField())
+        self.assertIsNone(p.action)
+        self.assertTrue(p.hurt)
+
+    def test_cannot_attack_while_using_kit(self):
+        p = self.hurt_player()
+        p.request_heal()
+        p.update(DT, Keys(), OpenField())
+        self.assertTrue(p.busy)
+        hits = [h for _ in range(round(HEAL_TIME / DT)) if (h := p.update(DT, Keys(), OpenField()))]
+        self.assertEqual(hits, [])
+        self.assertFalse(p.attacking)
+
+
 class DamageSpriteTests(unittest.TestCase):
     def test_frames(self):
         from sprites import load_damage_animations

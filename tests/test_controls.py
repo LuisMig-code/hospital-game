@@ -11,6 +11,7 @@ import main  # noqa: E402
 import settings as S  # noqa: E402
 from doors import SIDES  # noqa: E402
 from player import Player  # noqa: E402
+from items import MedKit  # noqa: E402
 from zombies import IDLE, Zombie  # noqa: E402
 
 FACING = {(0, -1): "up", (0, 1): "down", (-1, 0): "left", (1, 0): "right"}
@@ -70,11 +71,106 @@ class SpaceTests(unittest.TestCase):
         z.state = IDLE
         g.horde.zombies.append(z)
         try:
-            g.action()
-            self.assertTrue(door.open)                      # zumbi na porta: não fecha
-            self.assertFalse(g.player.attack_queued)
+            self.assertEqual(g.toggle_door(), "zumbi")      # zumbi na porta: não fecha
+            self.assertTrue(door.open)
+            g.action()                                      # e o Espaço, com ele colado, ataca
+            self.assertTrue(door.open)
+            self.assertTrue(g.player.attack_queued)
         finally:
             g.horde.zombies.remove(z)
+
+
+class SpaceOrderTests(unittest.TestCase):
+    """Espaço: zumbi colado → ataca; kit embaixo → pega; porta → abre/fecha; senão ataca."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.game = main.Game(42)
+
+    def setUp(self):
+        g = self.game
+        g.horde.zombies = []
+        g.medkits = []
+        sx, sy = g.dungeon.spawn
+        g.player = Player(g.anims, (sx, sy))
+        g.player.facing = "down"
+
+    def zombie(self, tile):
+        z = Zombie(tile, None)
+        z.state = IDLE
+        self.game.horde.zombies.append(z)
+        return z
+
+    def test_kit_under_player_is_collected(self):
+        g = self.game
+        kit = MedKit(g.player.tile)
+        g.medkits.append(kit)
+        g.action()
+        self.assertNotIn(kit, g.medkits)                    # sumiu do chão
+        self.assertEqual(g.player.medkits, 1)
+        self.assertEqual(g.player.action, "pickup")
+        self.assertFalse(g.player.attack_queued)
+
+    def test_zombie_touching_attacks_instead_of_collecting(self):
+        g = self.game
+        x, y = g.player.tile
+        kit = MedKit((x, y))
+        g.medkits.append(kit)
+        self.zombie((x + 1, y))                             # colado (de lado, não à frente)
+        g.action()
+        self.assertTrue(g.player.attack_queued)
+        self.assertIn(kit, g.medkits)
+        self.assertEqual(g.player.medkits, 0)
+
+    def test_diagonal_zombie_counts_as_touching(self):
+        g = self.game
+        x, y = g.player.tile
+        g.medkits.append(MedKit((x, y)))
+        self.zombie((x + 1, y + 1))
+        g.action()
+        self.assertTrue(g.player.attack_queued)
+
+    def test_far_or_buried_zombie_does_not_block_pickup(self):
+        g = self.game
+        x, y = g.player.tile
+        g.medkits.append(MedKit((x, y)))
+        self.zombie((x + 2, y))                             # a 2 tiles
+        buried = Zombie((x + 1, y), None)                   # enterrado
+        g.horde.zombies.append(buried)
+        g.action()
+        self.assertEqual(g.player.medkits, 1)
+
+    def test_no_kit_no_door_attacks(self):
+        g = self.game
+        g.action()
+        self.assertTrue(g.player.attack_queued)
+
+    def test_busy_ignores_space(self):
+        g = self.game
+        g.medkits.append(MedKit(g.player.tile))
+        g.player.start_pickup()                             # já pegando outro
+        g.action()
+        self.assertEqual(len(g.medkits), 1)
+        self.assertFalse(g.player.attack_queued)
+
+    def test_h_messages_and_heal(self):
+        g = self.game
+        p = g.player
+        g.use_medkit()
+        self.assertEqual(g.message, "Sem kit médico")
+        p.medkits = 1
+        g.use_medkit()
+        self.assertEqual(g.message, "Vida cheia")
+        self.assertFalse(p.heal_queued)
+        p.hp = 5
+        g.use_medkit()
+        self.assertTrue(p.heal_queued)
+        texts = len(g.texts)
+        for _ in range(60):
+            g.step(1 / 60, _NoKeys())
+        self.assertEqual((p.hp, p.medkits), (5 + S.MEDKIT_HEAL, 0))
+        self.assertEqual(len(g.texts), texts + 1)           # "+2" verde
+        self.assertEqual(g.texts[-1].text, f"+{S.MEDKIT_HEAL}")
 
 
 class GameOverTests(unittest.TestCase):
