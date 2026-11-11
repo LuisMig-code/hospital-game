@@ -24,12 +24,13 @@ class Prop:
 P = Prop
 PROPS = {
     # --- camas e macas
-    "bed_v": P("furn", 0, 0, 40, 1, 2),
-    "bed_v_dirty": P("furn", 0, 1, 40, 1, 2),
-    "bed_v_blood": P("furn", 0, 2, 40, 1, 2),
-    "bed_h": P("equip", 0, 0, 66, 2, 1),
-    "bed_h_blood": P("equip", 0, 2, 66, 2, 1),
-    "bed_broken": P("equip", 0, 5, 68, 2, 1),
+    # camas: de pé 2x2 tiles (~2,4 tiles de altura no desenho), deitadas 3x2
+    "bed_v": P("furn", 0, 0, 52, 2, 2),
+    "bed_v_dirty": P("furn", 0, 1, 52, 2, 2),
+    "bed_v_blood": P("furn", 0, 2, 52, 2, 2),
+    "bed_h": P("equip", 0, 0, 88, 3, 2),
+    "bed_h_blood": P("equip", 0, 2, 88, 3, 2),
+    "bed_broken": P("equip", 0, 5, 90, 3, 2),
     "stretcher": P("equip", 1, 0, 64, 2, 1),
     "stretcher_body": P("equip", 1, 1, 64, 2, 1),
     "stretcher_blood": P("equip", 1, 2, 64, 2, 1),
@@ -169,9 +170,9 @@ THEMES = {
         floors=("plain",), decals=("dirt", "blood_drops", "cracked", "footprints"),
         top=("bed_v", "bed_v_dirty", "bed_v_blood", "bed_v", "nightstand", "iv_stand", "iv_blood",
              "curtain", "cabinet_glass"),
-        side=("bed_v", "bed_v_dirty", "nightstand", "nightstand_open", "iv_stand", "drawers"),
+        side=("nightstand", "nightstand_open", "iv_stand", "iv_blood", "drawers"),
         center=((("screen", 0, 0),),
-                (("bed_h", 0, 0), ("iv_stand", 2, 0)),
+                (("bed_h", 0, 0), ("iv_stand", 3, 1)),
                 (("curtain_blood", 0, 0),)),
         scatter=("bandages", "gloves", "bloody_cloth"),
         loose=("wheelchair", "wheelchair_back", "iv_stand"),

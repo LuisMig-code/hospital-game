@@ -2,6 +2,9 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-11 — Camas maiores
+- Camas de pé passam a 2×2 tiles (52 px de largura, ~2,4 tiles de altura no desenho) e camas deitadas/quebrada a 3×2 (88–90 px). Nas laterais da Enfermaria ficam só criados-mudos, suportes de soro e gaveteiros.
+
 ## 2026-11-11 — Estantes maiores
 - Estantes (cheia, com sangue, vazia) aumentadas como os armários: 2 tiles de largura e ~2 tiles de altura, só na parede de cima. A estante quebrada (no chão do Depósito) também ficou um pouco maior. Nas laterais entram gaveteiros, caixas e caixotes.
 
