@@ -2,7 +2,7 @@
 
 Todas as constantes ajustáveis ficam em `settings.py`.
 
-Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_SHEET`, `MEDKIT_SHEET`, `PICKUP_SHEET`, `HEAL_SHEET`, `FLOOR_SHEET`, `WALL_SHEET`, `DOOR_SHEET`, `ELEVATOR_ARRIVE_SHEET`, `ELEVATOR_EXIT_SHEET`, `FLOOR_VIDEO`, `FLOOR_VIDEO_SOUND` e `PROP_SHEETS` (os 3 sheets de props).
+Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_SHEET`, `MEDKIT_SHEET`, `PICKUP_SHEET`, `HEAL_SHEET`, `FLOOR_SHEET`, `WALL_SHEET`, `DOOR_SHEET`, `ELEVATOR_ARRIVE_SHEET`, `ELEVATOR_EXIT_SHEET`, `FLOOR_VIDEO`, `FLOOR_VIDEO_SOUND`, `MAP_BOARD` e `PROP_SHEETS` (os 3 sheets de props).
 
 ## Tela, grid e mapa
 
@@ -47,6 +47,10 @@ Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_
 | `HUD_PANEL_ALPHA` | 150 | Opacidade do painel do rodapé (controles) |
 | `HUD_BAR_H` | 52 | Altura da tarja do HUD no topo; o mundo é desenhado abaixo dela |
 | `COLOR_HUD_BAR` | preto | Cor da tarja do HUD |
+| `MAP_SCREEN_H` | 700 | Altura do quadro do mapa (M) na tela; a largura segue a proporção (~933) |
+| `MAP_BLINK` | 0.5 | Segundos de cada piscada do personagem no mapa |
+| `MAP_SHADE` | 170 | Escurecimento do jogo atrás do mapa (0–255) |
+| `MAP_COLORS` | — | Cores do mapa: `floor` (sala limpa), `corridor`, `enemies` (sala com inimigos), `wall`, `door_opened` (verde), `door_new` (carmesim), `elevator_in`, `elevator_out`, `medkit`, `player`, `ink` (texto no quadro) |
 
 ## Visão
 

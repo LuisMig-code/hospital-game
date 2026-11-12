@@ -297,3 +297,26 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 - Ordem do Espaço: zumbi colado → ataca; **frente da saída → entra no elevador**; kit embaixo ou do lado → pega; porta → abre/fecha; senão ataca. Durante a chegada e a saída o Espaço não faz nada.
 - Os elevadores são desenhados junto com personagem, zumbis e móveis, ordenados pela base (a linha logo abaixo da parede), antes da névoa: a saída só aparece depois de descoberta.
 - HUD: "Andar N" à direita da tarja do topo (a seed mostrada embaixo é a da run).
+
+## Mapa — tecla M (`map_view.py`, `main.py`)
+
+- **M** abre o mapa do andar (só jogando, com o personagem vivo; não abre na chegada/saída do elevador). **M** ou **ESC** fecham — com o mapa aberto o ESC não sai do jogo. **R** fecha o mapa e começa uma run nova.
+- O jogo fica **pausado**: `Game.frame` pula o `step` (zumbis, animações, estamina e tempo param). Espaço, H e os outros comandos são ignorados.
+- O quadro (`MAP_BOARD`) aparece centralizado, com `MAP_SCREEN_H` px de altura, sobre o jogo escurecido (`MAP_SHADE`). Ele é montado **uma vez ao abrir** (`MapBoard.render`); a cada quadro só o ponto do personagem é redesenhado, piscando (`MAP_BLINK`).
+- Na área quadriculada, só o que já foi **descoberto** (`Vision.explored`) — ~8 px por tile. Cores em `MAP_COLORS`:
+
+| O quê | Cor |
+|---|---|
+| Chão de sala **limpa** | azul-claro de planta ("cor normal") |
+| Chão de sala que **ainda tem inimigos** | vermelho claro |
+| Corredor | azul-acinzentado |
+| Paredes descobertas | cinza-azulado (contorno das salas) |
+| Porta **já aberta alguma vez** (mesmo fechada depois) | verde |
+| Porta **nunca aberta** | vermelho carmesim |
+| Elevador de chegada / de saída (depois de descoberto) | cinza / amarelo |
+| Kit médico visto e ainda no chão | cruz verde |
+| Personagem | ponto branco piscando |
+
+- **Sala com inimigos**: algum zumbi vivo **nasceu nela** (`Zombie.home`, que não muda) — enterrado, vagando ou perseguindo o personagem fora dela. Quando o último morre (sai da `Horde`), a sala fica limpa. Sala sem zumbi é limpa.
+- **Porta aberta**: `Door.opened` vira `True` na primeira vez que `try_toggle` abre a porta e não volta a `False`.
+- Painel do quadro: faixa de cima "MAPA — ANDAR N"; círculo com **salas limpas / salas descobertas**; as 5 linhas com caixinha são a **legenda** (com zumbis, sala limpa, porta aberta, nunca aberta, saída); faixa de baixo "[M] fechar".

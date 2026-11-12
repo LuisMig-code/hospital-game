@@ -35,6 +35,7 @@ A mesma seed sempre gera a mesma dungeon (layout e variações visuais).
 | Shift (segurar) | Correr — 2x mais rápido, gasta estamina |
 | Espaço | Zumbi colado → **ataca**. Senão, na frente do **elevador de saída** → entra. Senão, parado em cima ou do lado de um **kit médico** → pega. Senão, porta à frente (ou embaixo) → abre/fecha. Senão → **ataca** com a faca na direção em que ele está virado (dano em área) |
 | H | Usa um kit médico guardado (+2 de vida) |
+| M | Abre/fecha o **mapa** do que já foi descoberto (pausa o jogo): salas com zumbis em vermelho claro, portas já abertas em verde e nunca abertas em carmesim |
 
 Objetivo: cada andar começa com o personagem saindo de um **elevador**; ache o **elevador de saída** (numa sala longe) e aperte **Espaço** na frente dele para ir ao próximo andar (vida e kits continuam). Morrer começa uma run nova no andar 1.
 
@@ -61,6 +62,7 @@ fov.py               campo de visão (linha de visão) e memória do explorado
 lighting.py          névoa com bordas suaves e luz em volta do personagem
 sprites.py           recorte dos sprite sheets (personagem andando/atacando e zumbi)
 tileset.py           recorte do tileset do hospital e desenho do mapa
+map_view.py          mapa do andar (tecla M) sobre o quadro de prancheta
 tools/export_frames.py   exporta os recortes em PNG para conferência
 tests/               testes unitários (unittest)
 assets/personagem/   sprite sheet do personagem

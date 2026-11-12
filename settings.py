@@ -11,6 +11,7 @@ ELEVATOR_ARRIVE_SHEET = ASSETS / "cenario" / "Haunted Elevator Sprite Sheet_cheg
 ELEVATOR_EXIT_SHEET = ASSETS / "cenario" / "Pixel Art Elevator Sprite Sheet_elevator out.png"
 FLOOR_VIDEO = ASSETS / "cenario" / "Elevator_doors_opening_with_glow_50d001eb.mp4"   # troca de andar
 FLOOR_VIDEO_SOUND = ASSETS / "cenario" / "elevator_video.wav"    # som do vídeo (tools/extract_video_audio.py)
+MAP_BOARD = ASSETS / "background" / "Worn Pixel Art Hospital Map Board_map.png"   # quadro do mapa (M)
 PROP_SHEETS = {
     "equip": ASSETS / "cenario" / "Detailed Hospital Equipment Sprite Sheet.png",
     "furn": ASSETS / "cenario" / "Hospital Furniture Sprite Sheet on Transparent Background.png",
@@ -62,6 +63,24 @@ LIGHT_FLICKER = True            # tremulação sutil da luz (lâmpada de hospita
 HUD_PANEL_ALPHA = 150           # opacidade do painel do rodapé (controles)
 HUD_BAR_H = 52                  # altura da tarja do HUD no topo (o mundo é desenhado abaixo dela)
 COLOR_HUD_BAR = (0, 0, 0)       # cor da tarja
+
+# Mapa (tecla M): quadro centralizado na tela, jogo pausado
+MAP_SCREEN_H = 700              # altura do quadro do mapa na tela (a largura segue a proporção)
+MAP_BLINK = 0.5                 # segundos de cada piscada do ponto do personagem
+MAP_SHADE = 170                 # escurecimento do jogo atrás do mapa (0-255)
+MAP_COLORS = {
+    "floor": (206, 222, 230),       # chão de sala limpa ("cor normal", azul-claro de planta)
+    "corridor": (160, 180, 192),    # chão de corredor
+    "enemies": (238, 140, 135),     # chão de sala que ainda tem zumbi vivo nascido nela
+    "wall": (88, 104, 118),         # paredes exploradas (contorno das salas)
+    "door_opened": (70, 200, 90),   # porta já aberta alguma vez (mesmo se fechada depois)
+    "door_new": (160, 16, 36),      # porta nunca aberta (vermelho carmesim)
+    "elevator_in": (150, 150, 150), # elevador de chegada
+    "elevator_out": (245, 205, 60), # elevador de saída (depois de descoberto)
+    "medkit": (60, 210, 80),        # kit médico visto e ainda no chão (cruz)
+    "player": (255, 255, 255),      # personagem (ponto piscando)
+    "ink": (38, 44, 34),            # texto escrito no quadro
+}
 
 # Visão (névoa de guerra)
 VISION_RADIUS = 8               # raio de visão em tiles

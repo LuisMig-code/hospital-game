@@ -18,6 +18,7 @@
 | `props.py` | Recorte e desenho dos props (móveis a cada quadro, detalhes no mapa) | `PropArt`, `load_prop_images`, `slice_sheet` |
 | `elevators.py` | Elevadores de chegada e saída: posição (sem pygame) e estado da animação | `place_elevators`, `Elevator`, `ElevatorActor` |
 | `video.py` | Vídeo da troca de andar: quadros do `.mp4` pelo OpenCV e som pelo mixer | `FloorVideo` |
+| `map_view.py` | Mapa do andar (M): situação das salas, desenho do descoberto sobre o quadro, legenda e resumo | `MapBoard`, `room_status`, `discovered_rooms` |
 | `items.py` | Kit médico no chão: spawn por sala (40%), flutuar e desenho | `MedKit`, `spawn_medkits` |
 | `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando, levando dano, pegando e usando o kit), do kit médico e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_kit_animations`, `load_medkit_item`, `load_zombie_animations`, `load_zombie_kind_animations` |
 | `tileset.py` | Piso, paredes e portas novos (recorte) e montagem do mapa por tema | `Tileset`, `render_map`, `theme_at`, `load_floor_blocks`, `load_wall_pieces`, `load_door_pieces` |
@@ -49,7 +50,8 @@ sprites ► settings
    - cria a `Horde` (3–5 zumbis enterrados por sala, longe do spawn) e os kits médicos (`spawn_medkits`);
    - cria a `Vision` e a névoa (`FogLayer`, toda preta).
 3. A cada frame (`Game.run`):
-   - eventos de teclado (R, G, V, Espaço, ESC) e da roda do mouse (→ `change_zoom`);
+   - eventos de teclado (R, G, V, H, M, Espaço, ESC) e da roda do mouse (→ `change_zoom`), tratados em `Game.handle_event` (devolve False para sair); com o mapa aberto, só M/ESC (fechar), R e fechar a janela valem;
+   - `Game.frame(dt, teclas)` roda a lógica (`step`, pulada com o mapa aberto — jogo pausado) e desenha;
    - Espaço → `action()`: primeiro `toggle_door()` (`try_toggle` muda o estado da porta, `draw_door` redesenha só aquela área do `map_surf` e a visão é recalculada com `update_vision(force=True)`); se não há porta à frente nem embaixo do personagem → `player.request_attack()` (antes disso: zumbi colado → ataca; parado em cima de kit → pega); H → `use_medkit()`;
    - a lógica do quadro fica em `Game.step(dt, teclas)` (os testes a usam sem janela):
    - `horde.update(dt, player, vision.visible)` — acorda os zumbis vistos, move os ativos (vagando ou perseguindo) e devolve os que bateram no personagem → `zombie_hits` → `player.take_hit` (vida, empurrão, `-2`, moldura vermelha);
@@ -58,7 +60,7 @@ sprites ► settings
    - `update_vision()` — recalcula a visão se o personagem mudou de tile e atualiza a névoa (`FogLayer.update`);
    - `light.update(dt)` — tremulação da luz;
    - `update_zoom(dt)` — o zoom anda suavemente até o alvo pedido pela roda;
-   - `draw_world()`, `draw_hit_flash()`, `draw_hud()` e `draw_game_over()`.
+   - `draw_world()`, `draw_hit_flash()`, `draw_hud()`, `draw_game_over()`, `draw_floor_fade()` e, por cima de tudo, `draw_map()` (mapa aberto).
 
 ## Ordem de desenho (`draw_world`)
 

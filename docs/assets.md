@@ -136,6 +136,16 @@ Dois sheets de 1402×1122 px, fundo transparente, 4 linhas; os quadros encostam 
 - 1280×720 (o tamanho da tela), 24 fps, 190 quadros (~7,9 s), H.264 + som AAC estéreo 48 kHz. Tocado na troca de andar (`video.py`, com OpenCV).
 - O som está também em `assets/cenario/elevator_video.wav` (16 bits, estéreo, 48 kHz), gerado por `tools/extract_video_audio.py` (usa o pacote `av`). Se trocar o vídeo, rode a ferramenta de novo.
 
+## Mapa — `assets/background/Worn Pixel Art Hospital Map Board_map.png`
+- Quadro de prancheta 1448×1086, opaco, usado inteiro (escalado para `MAP_SCREEN_H` px de altura com `smoothscale`).
+- Áreas medidas no PNG (pixels do quadro, constantes em `map_view.py`):
+  - `BOARD_GRID` (61, 211, 1042×768): área quadriculada onde vai o mapa — 80×60 tiles cabem com ~12,8 px por tile do quadro (~8 px na tela);
+  - `BOARD_TITLE` (107, 84, 1252×91): faixa de cima (título);
+  - `BOARD_CIRCLE` centro (1262, 345), raio interno 78: resumo das salas;
+  - `BOARD_BOXES`: as 5 caixinhas da legenda (x 1157, 42 px), com o texto a partir de x 1213;
+  - `BOARD_BOTTOM` (52, 1011, 1346×27): faixa de baixo.
+- Trocando o quadro, meça de novo essas áreas.
+
 ## Conferindo os recortes
 
 ```bash

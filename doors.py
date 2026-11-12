@@ -20,6 +20,7 @@ class Door:
     side: str                   # lado da sala: top, bottom, left, right
     room: object = None         # sala dona da porta (o tema escolhe o desenho)
     open: bool = False
+    opened: bool = False        # já foi aberta alguma vez (mapa: verde), mesmo se fechada depois
     base: object = field(default=None, repr=False)  # pedaço do mapa por baixo (desenho)
 
 
@@ -124,7 +125,7 @@ def try_toggle(dungeon, player, zombies=()):
             return "zumbi", door
         door.open = False
         return "fechou", door
-    door.open = True
+    door.open = door.opened = True
     return "abriu", door
 
 

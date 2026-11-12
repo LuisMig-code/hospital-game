@@ -98,7 +98,8 @@ class Zombie:
         self.frames = zombie_frames(kind)
         self.tile = tuple(tile)
         self.target = None
-        self.room = room
+        self.room = room                       # onde vaga (muda depois de uma perseguição)
+        self.home = room                       # sala onde nasceu (não muda; mapa: sala com inimigos)
         self.x, self.y = tile_center(self.tile)
         self.state = UNDERGROUND
         self.facing = "down"

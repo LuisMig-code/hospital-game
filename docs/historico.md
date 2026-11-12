@@ -2,6 +2,12 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-12 — Mapa (tecla M)
+- **M** abre o mapa do que já foi descoberto, sobre o quadro de prancheta (`Worn Pixel Art Hospital Map Board_map.png`), e pausa o jogo; M ou ESC fecham.
+- Salas que ainda têm zumbi vivo nascido nelas em **vermelho claro**, salas limpas na cor normal; portas já abertas alguma vez em **verde**, nunca abertas em **carmesim**; elevadores (a saída em amarelo depois de descoberta), kits vistos e o personagem piscando.
+- Painel do quadro: título com o andar, salas limpas/descobertas no círculo, legenda nas 5 linhas e "[M] fechar".
+- Zumbi ganhou `home` (sala onde nasceu) e porta ganhou `opened`; os eventos do loop foram para `Game.handle_event` e o quadro para `Game.frame`.
+
 ## 2026-11-12 — Zumbis médico, enfermeira e cadeirante
 - 3 tipos novos de zumbi, com sheets próprios (`assets/monster/`), misturados ao zumbi clássico. Começam caídos e **levantam do chão** quando vistos (a morte ao contrário); ao morrer, **caem** e o corpo some aos poucos.
 - Atributos por tipo (`ZOMBIE_KINDS`): enfermeira frágil e rápida (vida 7), médico como o clássico, cadeirante resistente (vida 14), lento vagando e rápido perseguindo em linha reta (mais lento na diagonal).

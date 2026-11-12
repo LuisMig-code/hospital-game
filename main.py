@@ -29,6 +29,7 @@ from sprites import (load_animations, load_attack_animations, load_damage_animat
 from zombies import Horde, touching
 from doors import try_toggle
 from props import PropArt
+from map_view import MapBoard
 from themes import THEMES
 from tileset import Tileset, bake_wall_shadows, door_rect, draw_door, init_doors, render_map
 
@@ -96,6 +97,9 @@ class Game:
             self.tiles = self.props = None
         self.show_grid = True
         self.show_fog = True
+        self.map_board = MapBoard()        # mapa (M): quadro carregado uma vez
+        self.map_open = False
+        self.map_time = 0.0                # piscar do personagem no mapa
         self.message, self.message_until = "", 0
         self.zoom = S.ZOOM_MIN             # zoom atual (vai suavemente até o alvo)
         self.zoom_target = S.ZOOM_MIN      # zoom pedido pela roda do mouse
@@ -119,6 +123,7 @@ class Game:
     def new_level(self, seed):
         if getattr(self, "video", None) is not None:      # R no meio do vídeo: para o som
             self.video.close()
+        self.map_open = False
         self.dungeon = generate(seed, S.MAP_W, S.MAP_H)
         self.map_surf = build_map_surface(self.dungeon, self.tiles, self.props)
         self.current_room = None           # sala onde o personagem está (mostra o nome ao entrar)
@@ -546,7 +551,7 @@ class Game:
 
         self.draw_controls()
 
-    CONTROLS = ("[WASD] andar  [Shift] correr  [Espaço] atacar/pegar/porta  [H] kit médico  "
+    CONTROLS = ("[WASD] andar  [Shift] correr  [Espaço] atacar/pegar/porta  [H] kit médico  [M] mapa  "
                 "[Roda] zoom  [R] nova  [G] grid  [V] névoa  [ESC] sair")
 
     def draw_controls(self):
@@ -647,36 +652,79 @@ class Game:
         self.update_zoom(dt)
         self.update_vision()
 
+    # ------------------------------------------------------------------- mapa
+    def open_map(self):
+        """M: abre o mapa do que já foi descoberto (só jogando, vivo). O jogo
+        pausa; o quadro é montado uma vez aqui."""
+        if self.map_open or self.phase != "play" or self.player.dead:
+            return False
+        self.map_board.render(self.dungeon, self.vision.explored, self.horde.zombies,
+                              self.medkits, self.floor)
+        self.map_open, self.map_time = True, 0.0
+        return True
+
+    def close_map(self):
+        self.map_open = False
+
+    def draw_map(self):
+        if self.map_open:
+            self.map_board.draw(self.screen, self.player.pixel_tile(), self.map_time)   # tela toda
+
+    # ----------------------------------------------------------------- eventos
+    def handle_event(self, e):
+        """Trata um evento. Devolve False para sair do jogo."""
+        key = e.key if e.type == pygame.KEYDOWN else None
+        if e.type == pygame.QUIT:
+            return False
+        if self.map_open:                      # mapa aberto: o jogo está pausado
+            if key in (pygame.K_m, pygame.K_ESCAPE):
+                self.close_map()
+            elif key == pygame.K_r:
+                self.new_run(random.randrange(1_000_000))
+            return True
+        if key == pygame.K_ESCAPE:
+            return False
+        if key == pygame.K_m:
+            self.open_map()
+        if key == pygame.K_r:
+            self.new_run(random.randrange(1_000_000))
+        if key == pygame.K_g:
+            self.show_grid = not self.show_grid
+        if key == pygame.K_v:
+            self.show_fog = not self.show_fog
+        if key == pygame.K_h:
+            self.use_medkit()
+        if self.phase == "video" and key in (pygame.K_SPACE, pygame.K_RETURN):
+            self.end_floor_video()             # pula o vídeo
+            return True
+        if key == pygame.K_SPACE:
+            self.action()
+        if e.type == pygame.MOUSEWHEEL:
+            # precise_y: frações de "clique" em touchpads (scroll contínuo)
+            self.change_zoom(getattr(e, "precise_y", e.y))
+        return True
+
+    def frame(self, dt, keys):
+        """Um quadro: lógica (pulada com o mapa aberto) e desenho."""
+        if self.map_open:
+            self.map_time += dt
+        else:
+            self.step(dt, keys)
+        if not self.draw_floor_video():    # vídeo da troca de andar ocupa a tela toda
+            self.draw_world()
+            self.draw_hit_flash()
+            self.draw_hud()
+            self.draw_game_over()
+            self.draw_floor_fade()
+            self.draw_map()
+
     def run(self):
         while True:
             dt = min(self.clock.tick(S.FPS) / 1000, 0.05)
             for e in pygame.event.get():
-                if e.type == pygame.QUIT or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
+                if not self.handle_event(e):
                     return
-                if e.type == pygame.KEYDOWN and e.key == pygame.K_r:
-                    self.new_run(random.randrange(1_000_000))
-                if e.type == pygame.KEYDOWN and e.key == pygame.K_g:
-                    self.show_grid = not self.show_grid
-                if e.type == pygame.KEYDOWN and e.key == pygame.K_v:
-                    self.show_fog = not self.show_fog
-                if e.type == pygame.KEYDOWN and e.key == pygame.K_h:
-                    self.use_medkit()
-                if e.type == pygame.KEYDOWN and self.phase == "video" and e.key in (pygame.K_SPACE, pygame.K_RETURN):
-                    self.end_floor_video()             # pula o vídeo
-                    continue
-                if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
-                    self.action()
-                if e.type == pygame.MOUSEWHEEL:
-                    # precise_y: frações de "clique" em touchpads (scroll contínuo)
-                    self.change_zoom(getattr(e, "precise_y", e.y))
-
-            self.step(dt, pygame.key.get_pressed())
-            if not self.draw_floor_video():    # vídeo da troca de andar ocupa a tela toda
-                self.draw_world()
-                self.draw_hit_flash()
-                self.draw_hud()
-                self.draw_game_over()
-                self.draw_floor_fade()
+            self.frame(dt, pygame.key.get_pressed())
             pygame.display.flip()
 
 

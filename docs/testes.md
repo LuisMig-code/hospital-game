@@ -94,6 +94,12 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Tipos (atributos): vida, dano e velocidades vêm do tipo (o `classic` usa as constantes `ZOMBIE_*`); a enfermeira morre com 7; o cadeirante é mais lento vagando, mais rápido perseguindo em linha reta e mais lento na diagonal; tipo novo levanta do chão e, morrendo, cai (quadros em ordem), o corpo some aos poucos e vira `dead` depois de `corpse_time`; parado, fica virado para o lado em que andou.
 - Tipos (spawn, 150 seeds): os 4 aparecem; o mais comum é a enfermeira nas Enfermarias, o médico nos Centros cirúrgicos e o clássico nos Depósitos; tipos determinísticos e as posições não mudam com os pesos.
 
+### `tests/test_map.py`
+- Porta: abrir marca `opened`, fechar mantém; porta nunca tocada fica `opened=False`.
+- Situação das salas: sala com zumbi vivo nascido nela (até enterrado) tem inimigos; sem zumbis, limpa; zumbi que saiu perseguindo ainda conta para a sala de origem; morto, não conta.
+- Desenho: tile não descoberto mantém o quadro; chão de sala limpa na cor normal e de sala com inimigos em vermelho claro; corredor e parede nas cores deles; porta já aberta verde, nunca aberta carmesim, não descoberta não aparece; elevador de saída e kit só depois de vistos; resumo e legenda desenham; o mapa cabe na grade do quadro e o quadro na tela.
+- Jogo: M não abre na chegada nem morto; abre e fecha jogando; aberto, o jogo fica pausado (zumbi, tempo e estamina parados) e volta ao fechar; ESC fecha o mapa sem sair (sem o mapa, sai); Espaço e H são ignorados; R fecha o mapa e começa uma run nova.
+
 ### `tests/test_zoom.py`
 - Começa em 1x; limites 1x e 2x.
 - A roda muda o alvo em `ZOOM_STEP` por clique, aceita frações (touchpad) e não passa dos limites; dez cliques dão exatamente 2.0.
