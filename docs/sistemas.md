@@ -106,7 +106,7 @@ Depois das portas, `dungeon.generate` chama `furnish` (com um `Random` próprio,
 | Emergência | com sangue (1) | com sangue | liso (+ poças, rastros, mão de sangue) | macas, carrinhos de emergência, monitores, soro, pia, cadeira de rodas caída, cama quebrada | seringas, panos, bolsas de soro, vidro |
 | Centro cirúrgico | azulejo azul (3) | padrão | azul | mesa de cirurgia + foco + mesa de instrumentos, anestesia, ventilador, monitores, armários de vidro, oxigênio | seringas, luvas, panos |
 | Necrotério | concreto enferrujado (4) | cofre | cinza escuro | gavetas de cadáver, mesas de autópsia, maca coberta, lixo hospitalar, estantes | saco de corpo, luvas, panos |
-| Depósito | com mofo (5) | vidro quebrado | liso (+ mofo, rachaduras, queimado, poça, concreto) | estantes, armários/lockers, caçambas, caixas, caixotes, entulho, móveis caídos | azulejos soltos, vidro, forro caído |
+| Depósito | com mofo (5) | vidro quebrado | liso (+ mofo, rachaduras, queimado, poça, concreto) | estantes, armários/lockers, caçambas, caixas, caixotes (sempre fechados), entulho, móveis caídos | azulejos soltos, vidro, forro caído |
 
 Corredores: parede padrão (0), piso liso com detalhes de vez em quando (rachadura, pegadas, poça, papéis, sangue, ralo, vidro). O nome do tema aparece no HUD quando o personagem entra na sala.
 

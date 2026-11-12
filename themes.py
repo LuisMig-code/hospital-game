@@ -114,7 +114,7 @@ PROPS = {
     # --- depósito / abandonado
     "boxes": P("weath", 1, 6, 36),
     "crate": P("weath", 3, 0, 36),
-    "crate_open": P("weath", 3, 1, 36),
+    "crate_open": P("weath", 3, 1, 36),     # sem uso nos temas: caixa aberta (futuro loot)
     "dumpster": P("weath", 3, 6, 36),
     "dumpster_open": P("weath", 3, 7, 36),
     "shelf_broken": P("weath", 1, 7, 62, 2, 1),
@@ -220,10 +220,11 @@ THEMES = {
         floors=("plain",), decals=("mold", "cracked", "broken", "burnt", "puddle", "slime", "concrete"),
         top=("shelf", "shelf_blood", "shelf_empty", "locker", "locker_open", "cabinet_rusty", "dumpster",
              "cabinet_low", "cabinet_low_open"),
-        side=("boxes", "crate", "crate_open", "dumpster_open", "drawers_rusty"),
+        # caixas sempre fechadas (a aberta, "crate_open", fica para o loot)
+        side=("boxes", "crate", "crate", "dumpster_open", "drawers_rusty"),
         center=((("boxes", 0, 0), ("crate", 1, 0)),
                 (("shelf_broken", 0, 0),),
-                (("crate_open", 0, 0), ("boxes", 0, 1))),
+                (("crate", 0, 0), ("boxes", 0, 1))),
         scatter=("tiles_loose", "glass", "ceiling_debris"),
         loose=("rubble", "boxes", "chair_fallen", "table_fallen", "monitor_smashed", "wheelchair_rusty"),
     ),
