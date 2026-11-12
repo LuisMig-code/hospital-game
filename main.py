@@ -64,6 +64,9 @@ class Game:
         pygame.init()
         pygame.display.set_caption("Dungeon")
         self.screen = pygame.display.set_mode((S.SCREEN_W, S.SCREEN_H))
+        # O mundo ocupa a tela abaixo da tarja do HUD (a tarja não cobre o mapa)
+        self.world_rect = pygame.Rect(0, S.HUD_BAR_H, S.SCREEN_W, S.SCREEN_H - S.HUD_BAR_H)
+        self.world_screen = self.screen.subsurface(self.world_rect)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("consolas", 18)
         self.anims = load_animations()
@@ -328,8 +331,10 @@ class Game:
             self.zoom += diff * (1 - math.exp(-S.ZOOM_SMOOTHING * dt))
 
     def view_size(self):
-        """Tamanho (em pixels do mundo) da área visível com o zoom atual."""
-        return round(S.SCREEN_W / self.zoom), round(S.SCREEN_H / self.zoom)
+        """Tamanho (em pixels do mundo) da área visível com o zoom atual
+        (a tela abaixo da tarja do HUD)."""
+        w, h = self.world_rect.size
+        return round(w / self.zoom), round(h / self.zoom)
 
     def camera(self):
         vw, vh = self.view_size()
@@ -357,13 +362,14 @@ class Game:
             fog, pos = self.fog.render(cam, view.get_size())
             view.blit(fog, pos)
         self.draw_damage_texts(view, cam)    # por cima da névoa, para ler bem
-        size = (S.SCREEN_W, S.SCREEN_H)
+        dest = self.world_screen              # abaixo da tarja do HUD
+        size = dest.get_size()
         if view.get_size() == size:
-            self.screen.blit(view, (0, 0))
+            dest.blit(view, (0, 0))
         elif float(self.zoom).is_integer():   # 2x exato: pixels nítidos
-            pygame.transform.scale(view, size, self.screen)
+            pygame.transform.scale(view, size, dest)
         else:                                 # zoom fracionário: suavizado, sem serrilhar
-            pygame.transform.smoothscale(view, size, self.screen)
+            pygame.transform.smoothscale(view, size, dest)
 
     def draw_actors(self, view, cam):
         """Personagem, zumbis, kits e móveis ordenados pela altura dos pés (a
@@ -474,56 +480,66 @@ class Game:
                 part.set_alpha(S.OCCLUDER_ALPHA)
                 view.blit(part, (upper.x - cam[0], upper.y - cam[1]))
 
-    def _text(self, text, pos, color=S.COLOR_TEXT):
-        """Texto com sombra de 1 px (legível sobre qualquer fundo)."""
-        self.screen.blit(self.font.render(text, True, (0, 0, 0)), (pos[0] + 1, pos[1] + 1))
-        self.screen.blit(self.font.render(text, True, color), pos)
+    def _text(self, text, pos, color=S.COLOR_TEXT, font=None, anchor="topleft"):
+        """Texto com sombra de 1 px (legível sobre qualquer fundo). `anchor`
+        diz qual ponto do texto fica em `pos` (topleft, midleft, topright...)."""
+        font = font or self.font
+        img = font.render(text, True, color)
+        rect = img.get_rect(**{anchor: pos})
+        self.screen.blit(font.render(text, True, (0, 0, 0)), rect.move(1, 1))
+        self.screen.blit(img, rect)
+        return rect
 
-    def draw_hud(self):
-        p = self.player
-        tx, ty = p.tile
-        hud = (f"Andar {self.floor}   Seed: {self.run_seed}   Tile: ({tx}, {ty})   Zoom: {self.zoom:.1f}x   "
-               f"Abatidos: {self.horde.killed}")
-        showing_msg = self.message and pygame.time.get_ticks() < self.message_until
-
-        # Painel semitransparente atrás do HUD
-        text_w = self.font.size(hud)[0]
-        panel = pygame.Rect(4, 4, text_w + 14, 100 if showing_msg else 76)
-        self.hud_panel(panel)
-
-        self._text(hud, (10, 8))
-
-        # Barra de vida
-        x, y, w, h = 10, 34, 200, 14
-        ratio = p.hp / S.PLAYER_HP
-        pygame.draw.rect(self.screen, (30, 30, 30), (x, y, w, h), border_radius=4)
-        if ratio > 0:
-            pygame.draw.rect(self.screen, (200, 40, 45), (x, y, max(4, round(w * ratio)), h), border_radius=4)
-        for i in range(1, S.PLAYER_HP // S.ZOMBIE_DAMAGE):   # marcas: cada golpe de zumbi
-            mx = x + round(w * i * S.ZOMBIE_DAMAGE / S.PLAYER_HP)
-            pygame.draw.line(self.screen, (20, 20, 20), (mx, y + 2), (mx, y + h - 3))
-        pygame.draw.rect(self.screen, (230, 230, 230), (x, y, w, h), 1, border_radius=4)
-        self._text(f"Vida: {p.hp}/{S.PLAYER_HP}", (x + w + 10, y - 2))
-        # Kits médicos guardados
-        kx = x + w + 140
-        self.screen.blit(self.medkit_icon, self.medkit_icon.get_rect(midleft=(kx, y + h // 2)))
-        self._text(f"Kits: {p.medkits}", (kx + self.medkit_icon.get_width() + 6, y - 2),
-                   (150, 230, 140) if p.medkits else S.COLOR_TEXT)
-
-        # Barra de estamina
-        x, y, w, h = 10, 56, 200, 14
-        ratio = p.stamina / S.STAMINA_MAX
-        color = (220, 60, 50) if ratio < 0.25 else (240, 200, 40)
+    def _bar(self, x, y, w, h, ratio, color, marks=0):
+        """Barra arredondada (vida/estamina) com `marks` divisões internas."""
         pygame.draw.rect(self.screen, (30, 30, 30), (x, y, w, h), border_radius=4)
         if ratio > 0:
             pygame.draw.rect(self.screen, color, (x, y, max(4, round(w * ratio)), h), border_radius=4)
+        for i in range(1, marks):
+            mx = x + round(w * i / marks)
+            pygame.draw.line(self.screen, (20, 20, 20), (mx, y + 2), (mx, y + h - 3))
         pygame.draw.rect(self.screen, (230, 230, 230), (x, y, w, h), 1, border_radius=4)
-        label = f"Estamina: {int(p.stamina)}/{S.STAMINA_MAX}" + ("  CORRENDO" if p.running else "")
-        self._text(label, (x + w + 10, y - 2))
 
-        # Mensagem temporária (ex.: porta bloqueada)
-        if showing_msg:
-            self._text(self.message, (10, 78), (255, 200, 120))
+    def draw_hud(self):
+        """Tarja preta no topo (o mundo fica abaixo dela): vida, estamina e
+        kits à esquerda; a mensagem temporária no meio; andar, abatidos,
+        seed, tile e zoom à direita."""
+        p = self.player
+        bar_h = S.HUD_BAR_H
+        self.screen.fill(S.COLOR_HUD_BAR, (0, 0, S.SCREEN_W, bar_h))
+        pygame.draw.line(self.screen, (70, 70, 70), (0, bar_h - 1), (S.SCREEN_W, bar_h - 1))
+        small = self.small_font
+        mid = bar_h // 2
+
+        # Esquerda: vida (marcas = cada golpe de zumbi) e estamina
+        x, w, h = 12, 180, 12
+        y1, y2 = mid - h - 2, mid + 2
+        self._bar(x, y1, w, h, p.hp / S.PLAYER_HP, (200, 40, 45), marks=S.PLAYER_HP // S.ZOMBIE_DAMAGE)
+        self._text(f"Vida {p.hp}/{S.PLAYER_HP}", (x + w + 10, y1 + h // 2), font=small, anchor="midleft")
+        ratio = p.stamina / S.STAMINA_MAX
+        self._bar(x, y2, w, h, ratio, (220, 60, 50) if ratio < 0.25 else (240, 200, 40))
+        label = f"Estamina {int(p.stamina)}/{S.STAMINA_MAX}" + ("  CORRENDO" if p.running else "")
+        self._text(label, (x + w + 10, y2 + h // 2), font=small, anchor="midleft")
+
+        # Kits médicos guardados
+        kx = x + w + 10 + small.size(f"Estamina {S.STAMINA_MAX}/{S.STAMINA_MAX}  CORRENDO")[0] + 24
+        icon = self.medkit_icon.get_rect(midleft=(kx, mid))
+        self.screen.blit(self.medkit_icon, icon)
+        kits = self._text(f"Kits: {p.medkits}", (icon.right + 6, mid), (150, 230, 140) if p.medkits else S.COLOR_TEXT,
+                          anchor="midleft")
+
+        # Direita: andar e abatidos; embaixo, menor, seed/tile/zoom
+        tx, ty = p.tile
+        right = S.SCREEN_W - 12
+        top = self._text(f"Andar {self.floor}   Abatidos: {self.horde.killed}", (right, mid - 1), anchor="bottomright")
+        info = self._text(f"Seed: {self.run_seed}   Tile: ({tx}, {ty})   Zoom: {self.zoom:.1f}x",
+                          (right, mid + 2), (170, 170, 170), font=small, anchor="topright")
+
+        # Meio: mensagem temporária (nome da sala, kit guardado, porta bloqueada...)
+        if self.message and pygame.time.get_ticks() < self.message_until:
+            left, end = kits.right + 20, min(top.left, info.left) - 20
+            font = self.font if self.font.size(self.message)[0] <= end - left else small
+            self._text(self.message, ((left + end) // 2, mid), (255, 200, 120), font=font, anchor="center")
 
         self.draw_controls()
 
@@ -540,16 +556,6 @@ class Game:
             self._controls_panel = panel
         self.screen.blit(self._controls_panel, (rect.x - 6, rect.y - 4))
         self.screen.blit(img, rect)
-
-    def hud_panel(self, rect):
-        if getattr(self, "_panel_size", None) != rect.size:
-            self._panel = pygame.Surface(rect.size, pygame.SRCALPHA)
-            pygame.draw.rect(self._panel, (10, 12, 14, S.HUD_PANEL_ALPHA),
-                             self._panel.get_rect(), border_radius=8)
-            pygame.draw.rect(self._panel, (255, 255, 255, 40),
-                             self._panel.get_rect(), 1, border_radius=8)
-            self._panel_size = rect.size
-        self.screen.blit(self._panel, rect.topleft)
 
     def vignette(self):
         """Moldura vermelha que some para o centro (criada uma vez)."""
@@ -580,7 +586,8 @@ class Game:
         if self.dead_time < 0.4:
             return
         a = round(255 * min(1.0, (self.dead_time - 0.4) / 0.6))
-        center = (S.SCREEN_W // 2, round(S.SCREEN_H * 0.27))   # acima do personagem caído
+        wr = self.world_rect                                     # acima do personagem caído
+        center = (wr.centerx, wr.y + round(wr.h * 0.27))
         for img, dy in ((self.big_font.render("GAME OVER", True, (220, 40, 40)), -10),
                         (self.font.render("Recomeçando a dungeon...", True, (230, 230, 230)), 50)):
             img.set_alpha(a)

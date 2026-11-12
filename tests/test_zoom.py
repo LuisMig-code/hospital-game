@@ -81,9 +81,36 @@ class ZoomTests(unittest.TestCase):
             g.zoom = g.zoom_target = z
             vw, vh = g.view_size()
             self.assertAlmostEqual(vw, S.SCREEN_W / z, delta=1)
-            self.assertAlmostEqual(vh, S.SCREEN_H / z, delta=1)
+            self.assertAlmostEqual(vh, (S.SCREEN_H - S.HUD_BAR_H) / z, delta=1)   # abaixo da tarja
             g.draw_world()                                   # não pode quebrar em zoom fracionário
             self.assertEqual(g.screen.get_size(), (S.SCREEN_W, S.SCREEN_H))
+
+    def test_hud_bar_on_top_and_world_below(self):
+        """A tarja preta ocupa o topo e o mundo é desenhado só abaixo dela."""
+        g = self.game
+        g.zoom = g.zoom_target = 1.0
+        g.show_message("Recepção", 2.0)
+        g.screen.fill((255, 0, 255))
+        g.draw_world()
+        g.draw_hud()
+        black = tuple(S.COLOR_HUD_BAR)
+        for x in (S.SCREEN_W // 2 - 300, S.SCREEN_W // 2 + 150, S.SCREEN_W - 3):   # fora dos textos/barras
+            for y in (1, S.HUD_BAR_H - 4):
+                self.assertEqual(tuple(g.screen.get_at((x, y)))[:3], black, (x, y))
+        # nada do mundo (nem o fundo magenta) sobra embaixo da tarja
+        for x in range(0, S.SCREEN_W, 97):
+            self.assertNotEqual(tuple(g.screen.get_at((x, S.HUD_BAR_H + 2)))[:3], (255, 0, 255))
+
+    def test_camera_centers_player_in_world_area(self):
+        g = self.game
+        g.zoom = g.zoom_target = 2.0
+        vw, vh = g.view_size()
+        cam = g.camera()
+        mw, mh = g.map_surf.get_size()
+        if vh / 2 <= g.player.y <= mh - vh / 2:          # longe da borda do mapa
+            self.assertAlmostEqual(g.player.y - cam[1], vh / 2, delta=1)
+        if vw / 2 <= g.player.x <= mw - vw / 2:
+            self.assertAlmostEqual(g.player.x - cam[0], vw / 2, delta=1)
 
 
 if __name__ == "__main__":

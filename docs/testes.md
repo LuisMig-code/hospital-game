@@ -94,7 +94,8 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Começa em 1x; limites 1x e 2x.
 - A roda muda o alvo em `ZOOM_STEP` por clique, aceita frações (touchpad) e não passa dos limites; dez cliques dão exatamente 2.0.
 - A transição é suave: começa a mudar no primeiro quadro, sem pular de uma vez, só cresce, sem passar do alvo e sem saltos grandes; termina exatamente no alvo.
-- Evento `MOUSEWHEEL` muda o alvo; o desenho funciona em zooms fracionários.
+- Evento `MOUSEWHEEL` muda o alvo; o desenho funciona em zooms fracionários, e a área visível é a tela abaixo da tarja do HUD ÷ zoom.
+- Tarja do HUD: o topo (`HUD_BAR_H` px) fica preto fora dos textos e barras, e o mundo preenche tudo abaixo dela; a câmera centraliza o personagem na área do mundo.
 
 ### `tests/test_tileset.py`
 - Piso: 32 blocos de 96×96, e todo piso citado nos temas existe.

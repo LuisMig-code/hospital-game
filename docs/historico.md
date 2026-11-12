@@ -2,6 +2,10 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-11 — Tarja do HUD no topo
+- O HUD saiu de cima do mapa: agora é uma **tarja preta** de 52 px no topo (`HUD_BAR_H`), e o mundo é desenhado só abaixo dela (a câmera centraliza o personagem nessa área).
+- Esquerda: barras de vida e estamina e os kits; meio: a mensagem temporária (nome da sala, kit guardado...); direita: andar e abatidos e, menor, seed, tile e zoom.
+
 ## 2026-11-11 — Pegar kit do lado
 - O Espaço também pega um kit médico **colado** no personagem (8 direções, sem quina de parede), não só embaixo dele; o personagem vira para o kit. Preferência: embaixo, à frente, depois os outros lados.
 

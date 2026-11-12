@@ -62,7 +62,7 @@ sprites ► settings
 
 ## Ordem de desenho (`draw_world`)
 
-O mundo é desenhado numa superfície do tamanho da área visível (`view_size()` = tela ÷ zoom) e depois escalado para a tela:
+O mundo é desenhado numa superfície do tamanho da área visível (`view_size()` = área do mundo — a tela abaixo da tarja do HUD, `world_rect` — ÷ zoom) e depois escalado para a tela:
 
 1. mapa pré-renderizado (piso + sombras das paredes + paredes + portas no estado atual);
 2. grid (só sobre o piso), se ligado;
@@ -71,7 +71,7 @@ O mundo é desenhado numa superfície do tamanho da área visível (`view_size()
 5. luz em volta do personagem (`Light.draw`) e névoa suave (`FogLayer.render`) — as duas só com a névoa ligada (V);
 6. números de dano flutuando (por cima da névoa, para ler bem).
 
-O HUD (seed, tile, zoom, abatidos, vida, estamina, mensagens temporárias; controles num painel no rodapé) é desenhado direto na tela, sobre um painel semitransparente e com sombra no texto, depois da escala, para não mudar de tamanho com o zoom.
+O mundo escalado vai para `world_screen` (subsurface da tela abaixo da tarja). O HUD (vida, estamina, kits, mensagens temporárias, andar, abatidos, seed, tile, zoom) é desenhado direto na tela, numa **tarja preta no topo** que não cobre o mapa, com sombra no texto; os controles ficam num painel semitransparente no rodapé. Não muda de tamanho com o zoom.
 
 ## Coordenadas
 

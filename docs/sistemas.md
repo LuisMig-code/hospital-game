@@ -149,7 +149,7 @@ O mapa inteiro é desenhado uma vez por dungeon (`render_map`) a partir das peç
 | **Névoa suave** | `FogLayer` guarda a névoa numa superfície minúscula (1 pixel por tile; alpha 255 não descoberto, `FOG_EXPLORED_ALPHA` descoberto, 0 visível). A cada quadro, só o pedaço que aparece na tela é ampliado com `smoothscale`: a interpolação cria degradês entre os tiles em vez de quadrados. | `FOG_EXPLORED_ALPHA` |
 | **Luz com queda** | Máscara radial (pré-calculada) centrada no personagem: claro perto dele, escurecendo até `LIGHT_EDGE_ALPHA` na borda do raio de visão. Fora do quadrado da máscara, o resto da tela recebe a mesma escuridão da borda (sem emenda). Como essa escuridão soma com a névoa, a névoa dos tiles descobertos é compensada (`explored_fog_alpha`) para o resultado final continuar sendo `FOG_EXPLORED_ALPHA`. | `LIGHT_EDGE_ALPHA` |
 | **Tremulação** | A cada 0,08 s a luz sorteia um nível (quase sempre estável; às vezes uma piscada rápida, como lâmpada de hospital). São 4 máscaras pré-calculadas. | `LIGHT_FLICKER` |
-| **HUD** | Painel escuro semitransparente com cantos arredondados, texto com sombra de 1 px e barra de estamina arredondada. | `HUD_PANEL_ALPHA` |
+| **HUD** | **Tarja preta** no topo (`HUD_BAR_H` px, linha cinza embaixo), fora da área do mundo: vida e estamina (barras arredondadas) e kits à esquerda, a mensagem temporária no meio (fonte menor se não couber), andar/abatidos e seed/tile/zoom à direita. Texto com sombra de 1 px. Controles num painel semitransparente no rodapé. | `HUD_BAR_H`, `COLOR_HUD_BAR`, `HUD_PANEL_ALPHA` |
 
 Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem abaixo dos 16 ms de 60 FPS.
 
@@ -258,7 +258,7 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 - Senão toca a animação de uso (`heal_<direção>`, 8 quadros a `HEAL_FPS` ≈ 0,67 s). No quadro do brilho verde (`HEAL_FRAME` = 4) recupera **2 de vida** (`MEDKIT_HEAL`, até 10), gasta o kit e mostra um **+2** verde subindo.
 - Pedido no meio de um passo: começa ao chegar no tile. Durante a animação não anda, não vira e não ataca.
 - **Golpe de zumbi antes do brilho cancela e não gasta** o kit (o golpe também interrompe a animação de pegar — o kit já está guardado).
-- HUD: ícone do kit e **"Kits: N"** ao lado da vida.
+- HUD: ícone do kit e **"Kits: N"** na tarja do topo, ao lado das barras.
 
 ## Elevadores e andares (`elevators.py`, `main.py`)
 
@@ -282,4 +282,4 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 - **Game over**: a run acaba; depois de `GAME_OVER_TIME` começa uma **run nova com seed aleatória**, andar 1, vida cheia e sem kits. **R** também começa uma run nova.
 - Ordem do Espaço: zumbi colado → ataca; **frente da saída → entra no elevador**; kit embaixo ou do lado → pega; porta → abre/fecha; senão ataca. Durante a chegada e a saída o Espaço não faz nada.
 - Os elevadores são desenhados junto com personagem, zumbis e móveis, ordenados pela base (a linha logo abaixo da parede), antes da névoa: a saída só aparece depois de descoberta.
-- HUD: "Andar N" no começo da linha de cima (a seed mostrada é a da run).
+- HUD: "Andar N" à direita da tarja do topo (a seed mostrada embaixo é a da run).

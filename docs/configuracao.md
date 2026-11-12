@@ -44,7 +44,9 @@ Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_
 | `OCCLUDER_ALPHA` | 150 | Opacidade da porta quando o personagem passa atrás dela |
 | `LIGHT_EDGE_ALPHA` | 110 | Escurecimento na borda do raio de visão (0 = sem queda de luz) |
 | `LIGHT_FLICKER` | True | Tremulação sutil da luz |
-| `HUD_PANEL_ALPHA` | 150 | Opacidade do painel atrás do HUD |
+| `HUD_PANEL_ALPHA` | 150 | Opacidade do painel do rodapé (controles) |
+| `HUD_BAR_H` | 52 | Altura da tarja do HUD no topo; o mundo é desenhado abaixo dela |
+| `COLOR_HUD_BAR` | preto | Cor da tarja do HUD |
 
 ## Visão
 

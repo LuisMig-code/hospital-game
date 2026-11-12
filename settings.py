@@ -59,7 +59,9 @@ PLAYER_SHADOW_ALPHA = 130       # sombra (elipse) sob os pés do personagem
 OCCLUDER_ALPHA = 150            # opacidade da porta quando o personagem passa atrás dela
 LIGHT_EDGE_ALPHA = 110          # escurecimento na borda do raio de visão (0 = sem queda de luz)
 LIGHT_FLICKER = True            # tremulação sutil da luz (lâmpada de hospital)
-HUD_PANEL_ALPHA = 150           # opacidade do painel atrás do HUD
+HUD_PANEL_ALPHA = 150           # opacidade do painel do rodapé (controles)
+HUD_BAR_H = 52                  # altura da tarja do HUD no topo (o mundo é desenhado abaixo dela)
+COLOR_HUD_BAR = (0, 0, 0)       # cor da tarja
 
 # Visão (névoa de guerra)
 VISION_RADIUS = 8               # raio de visão em tiles
