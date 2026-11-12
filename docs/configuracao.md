@@ -123,6 +123,8 @@ Caminhos dos sheets: `CHARACTER_SHEET`, `ATTACK_SHEET`, `DAMAGE_SHEET`, `ZOMBIE_
 | `ZOMBIE_ATTACK_COOLDOWN` | 1.0 | Segundos entre um golpe e o próximo preparo |
 | `ZOMBIE_LUNGE` | 7 | Pixels que o zumbi avança ao bater (só visual) |
 | `KNOCKBACK_TIME` | 0.15 | Duração do empurrão de 1 tile (personagem) |
+| `ZOMBIE_HEIGHT` | 54 | Altura na tela dos zumbis novos (médico, enfermeira, cadeirante) em pé |
+| `ZOMBIE_KINDS` | 4 tipos | Por tipo: `sheet`, `hp`, `speed`/`chase_speed` (px/s vagando/perseguindo), `diagonal` (fator da velocidade na diagonal), `damage`, `anim_fps`, `rise_fps` (surgir/levantar), `death_fps`, `corpse_time` (segundos do corpo sumindo). O `classic` usa as constantes `ZOMBIE_*` acima; valores em [sistemas.md](sistemas.md#tipos-de-zumbi) |
 | `ZOMBIE_KNOCKBACK_TIME` | 0.15 | Duração do zumbi sendo lançado 1 tile pelo golpe do personagem |
 | `HURT_FPS` | 12 | Quadros por segundo da animação de dano |
 | `PLAYER_INVULN_TIME` | 1.0 | Segundos invulnerável (piscando) depois do dano |

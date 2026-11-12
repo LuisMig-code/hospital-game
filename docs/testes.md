@@ -51,6 +51,7 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 ### `tests/test_controls.py`
 - Espaço olhando para uma porta: abre/fecha e não ataca; sem porta por perto: ataca; dentro de uma porta aberta: não fecha nem ataca; com zumbi na porta: não fecha.
 - Ordem do Espaço: kit embaixo → pega (some do chão, conta 1, animação de pegar); kit do lado (reto ou diagonal) → pega e o personagem vira para ele; kit a 2 tiles → não pega (ataca); com kit embaixo e do lado, pega o de baixo; zumbi colado (de lado ou na diagonal) → ataca e não pega; zumbi longe ou enterrado não impede pegar; sem kit nem porta → ataca; ocupado → nada; zumbi na porta → a porta não fecha e o Espaço ataca. H: "Sem kit médico", "Vida cheia", e cura +2 com o número verde.
+- Tipos de zumbi: o golpe tira o dano do zumbi que bateu (e mostra "-N" com esse valor); o mundo desenha os 4 tipos sem quebrar.
 - Game over: golpe de zumbi tira vida e acende a moldura vermelha; vida 0 → depois de `GAME_OVER_TIME` começa uma run nova (outra seed, andar 1, vida cheia, sem kits) no spawn.
 - Elevadores: na chegada o personagem fica escondido e sem controle (nem anda nem ataca) e depois o elevador fecha; Espaço na frente da saída entra (e não ataca), Espaço durante a saída não faz nada, e a sequência (com o vídeo) leva ao andar 2 com outra seed mantendo vida e kits; o vídeo avança ~24 quadros por segundo em tela cheia e pode ser pulado; sem OpenCV, a troca usa a tela escura; com zumbi colado na frente da saída, ataca; longe da saída não entra; a luz da saída pulsa com o personagem perto; `new_run` volta ao andar 1.
 
@@ -89,6 +90,9 @@ venv\Scripts\python.exe -m unittest tests.test_fov        # um arquivo
 - Zumbi enterrado não bloqueia o personagem; fora do chão, bloqueia. Não acorda com o personagem em cima.
 - Perseguição: começa a `ZOMBIE_CHASE_RADIUS` tiles (5) e não a 6; chega colado e bate com preparo e intervalo certos; passa por porta aberta mas não por fechada; contorna parede; não bate através de quina; longe do personagem volta a vagar na sala em que está; personagem morto, zumbi enterrado ou morrendo não perseguem. Numa dungeon real, com o personagem parado perto: batem nele sem ninguém entrar no tile dele ou de outro zumbi.
 - Sprite: quantidade de quadros por animação, tamanho 64×64, nenhum pixel magenta/roxo sobrando.
+- Tipos novos (sprites): cada um com `idle`/`walk_*` de 8 quadros, `death`/`emerge` de 6 (`emerge` = `death` ao contrário) e os `idle_*`; altura em pé ≈ `ZOMBIE_HEIGHT`; cantos transparentes; o corpo não salta de lugar entre os quadros das caminhadas.
+- Tipos (atributos): vida, dano e velocidades vêm do tipo (o `classic` usa as constantes `ZOMBIE_*`); a enfermeira morre com 7; o cadeirante é mais lento vagando, mais rápido perseguindo em linha reta e mais lento na diagonal; tipo novo levanta do chão e, morrendo, cai (quadros em ordem), o corpo some aos poucos e vira `dead` depois de `corpse_time`; parado, fica virado para o lado em que andou.
+- Tipos (spawn, 150 seeds): os 4 aparecem; o mais comum é a enfermeira nas Enfermarias, o médico nos Centros cirúrgicos e o clássico nos Depósitos; tipos determinísticos e as posições não mudam com os pesos.
 
 ### `tests/test_zoom.py`
 - Começa em 1x; limites 1x e 2x.

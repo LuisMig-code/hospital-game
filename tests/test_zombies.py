@@ -13,7 +13,8 @@ import pygame  # noqa: E402
 import settings as S  # noqa: E402
 from dungeon import generate  # noqa: E402
 from player import Player  # noqa: E402
-from sprites import ZOMBIE_ROWS, is_magenta, load_zombie_animations  # noqa: E402
+from sprites import (KIND_FRAMES, ZOMBIE_ROWS, is_magenta, load_zombie_animations,  # noqa: E402
+                     load_zombie_kind_animations)
 from dungeon import Room  # noqa: E402
 from zombies import (CHASE, DYING, EMERGING, IDLE, UNDERGROUND, WALK, Horde, Zombie,  # noqa: E402
                      chebyshev, in_room, spawn_zombies)
@@ -96,7 +97,7 @@ class BehaviourTests(unittest.TestCase):
         self.assertTrue(all(z.state == UNDERGROUND for z in self.horde.zombies))
         self.run_for(DT, visible=self.room_tiles)
         self.assertTrue(all(z.state == EMERGING for z in self.zs))
-        emerge_time = len(load_frames("emerge")) / S.ZOMBIE_EMERGE_FPS
+        emerge_time = max(z.frames["emerge"] / z.stats["rise_fps"] for z in self.zs)   # o tipo mais lento
         self.run_for(emerge_time + 0.1, visible=self.room_tiles)
         self.assertTrue(all(z.state in (IDLE, WALK) for z in self.zs))
         # zumbis de outras salas (não vistas) continuam enterrados
@@ -142,7 +143,7 @@ class BehaviourTests(unittest.TestCase):
         x0, y0 = z.x, z.y
         z.update(0.1, OpenRoomDungeon(), set(), self.horde.rng)
         moved = ((z.x - x0) ** 2 + (z.y - y0) ** 2) ** 0.5
-        self.assertAlmostEqual(moved, S.ZOMBIE_SPEED * 0.1, delta=0.01)
+        self.assertAlmostEqual(moved, z.stats["speed"] * z.stats["diagonal"] * 0.1, delta=0.01)
 
     def test_player_blocked_by_active_zombie_not_buried(self):
         z = self.zs[0]
@@ -326,10 +327,6 @@ class ChaseTests(unittest.TestCase):
         self.assertFalse(z.update(DT, d, {(2, 2)}, self.rng, (2, 2)))
 
 
-def load_frames(name):
-    return next([None] * n for _, row_name, n in ZOMBIE_ROWS if row_name == name)
-
-
 class SpriteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -351,6 +348,166 @@ class SpriteTests(unittest.TestCase):
                         if c.a:
                             self.assertFalse(is_magenta(c))
                             self.assertFalse(c.r > 120 and c.b > 120 and c.g < 0.5 * min(c.r, c.b))
+
+
+NEW_KINDS = ("doctor", "nurse", "wheelchair")
+
+
+class KindSpriteTests(unittest.TestCase):
+    """Sheets dos zumbis novos (médico, enfermeira, cadeirante)."""
+
+    @classmethod
+    def setUpClass(cls):
+        pygame.init()
+        cls.anims = {k: load_zombie_kind_animations(k) for k in NEW_KINDS}
+
+    def test_frame_counts(self):
+        for kind, anims in self.anims.items():
+            for name, count in KIND_FRAMES.items():
+                self.assertEqual(len(anims[name]), count, (kind, name))
+            self.assertEqual(anims["emerge"], anims["death"][::-1], kind)      # levantar = morte ao contrário
+
+    def test_height_and_transparent_corners(self):
+        for kind, anims in self.anims.items():
+            tallest = max(img.get_bounding_rect().h for img in anims["idle"])
+            self.assertAlmostEqual(tallest, S.ZOMBIE_HEIGHT, delta=2, msg=kind)
+            for name, frames in anims.items():
+                for img in frames:
+                    w, h = img.get_size()
+                    for corner in ((0, 0), (w - 1, 0)):
+                        self.assertEqual(img.get_at(corner).a, 0, (kind, name))
+
+    def test_body_does_not_jump_while_walking(self):
+        """Recortados pelo meio da célula da grade: o corpo fica no mesmo lugar."""
+        for kind, anims in self.anims.items():
+            for name in ("idle", "walk_down", "walk_up", "walk_left", "walk_right"):
+                centers = [img.get_bounding_rect().centerx - img.get_width() / 2 for img in anims[name]]
+                self.assertLessEqual(max(centers) - min(centers), 6, (kind, name))
+
+
+class KindStatsTests(unittest.TestCase):
+    def setUp(self):
+        self.rng = random.Random(1)
+
+    def test_stats_come_from_the_kind(self):
+        for kind, stats in S.ZOMBIE_KINDS.items():
+            z = Zombie((1, 1), None, kind)
+            self.assertEqual((z.kind, z.hp, z.max_hp, z.damage), (kind, stats["hp"], stats["hp"], stats["damage"]))
+        self.assertEqual(Zombie((1, 1), None).kind, "classic")                 # padrão
+        classic = S.ZOMBIE_KINDS["classic"]
+        self.assertEqual((classic["hp"], classic["speed"], classic["chase_speed"], classic["damage"]),
+                         (S.ZOMBIE_HP, S.ZOMBIE_SPEED, S.ZOMBIE_CHASE_SPEED, S.ZOMBIE_DAMAGE))
+
+    def test_nurse_is_fragile_and_fast(self):
+        z = Zombie((1, 1), None, "nurse")
+        z.state = IDLE
+        self.assertTrue(z.hit(S.ZOMBIE_KINDS["nurse"]["hp"]))
+        n = S.ZOMBIE_KINDS["nurse"]
+        self.assertLess(n["hp"], S.ZOMBIE_HP)
+        self.assertGreater(n["chase_speed"], S.ZOMBIE_CHASE_SPEED)
+
+    def step_speed(self, kind, move, chase):
+        z = Zombie((5, 5), None, kind)
+        z.state = CHASE if chase else WALK
+        z.move, z.steps_left = move, 1
+        z.target = (5 + move[0], 5 + move[1])
+        x0, y0 = z.x, z.y
+        if chase:                       # perseguindo: o personagem está longe, mas no raio
+            z.update(0.1, OpenRoomDungeon(), set(), self.rng, (5 + 4 * move[0], 5 + 4 * move[1]))
+        else:
+            z.update(0.1, OpenRoomDungeon(), set(), self.rng)
+        return ((z.x - x0) ** 2 + (z.y - y0) ** 2) ** 0.5 / 0.1
+
+    def test_wheelchair_slow_wandering_fast_straight_slow_diagonal(self):
+        w = S.ZOMBIE_KINDS["wheelchair"]
+        self.assertAlmostEqual(self.step_speed("wheelchair", (1, 0), False), w["speed"], delta=0.1)
+        self.assertLess(w["speed"], S.ZOMBIE_SPEED)
+        straight = self.step_speed("wheelchair", (1, 0), True)
+        diagonal = self.step_speed("wheelchair", (1, 1), True)
+        self.assertAlmostEqual(straight, w["chase_speed"], delta=0.1)
+        self.assertGreater(straight, S.ZOMBIE_CHASE_SPEED)
+        self.assertAlmostEqual(diagonal, w["chase_speed"] * w["diagonal"], delta=0.1)
+        self.assertAlmostEqual(self.step_speed("classic", (1, 1), True), S.ZOMBIE_CHASE_SPEED, delta=0.1)
+
+    def test_new_kind_falls_then_corpse_fades(self):
+        d = open_room(6)
+        z = Zombie((2, 2), d.rooms[0], "doctor")
+        z.state = IDLE
+        z.hit(z.max_hp)
+        self.assertEqual((z.state, z.anim, z.frame), (DYING, "death", 0))
+        self.assertFalse(z.solid)                                            # morrendo não bloqueia
+        st = S.ZOMBIE_KINDS["doctor"]
+        fall = KIND_FRAMES["death"] / st["death_fps"]
+        frames, fades, t = [], [], 0.0
+        while z.state == DYING and t < 5:
+            z.update(DT, d, set(), self.rng)
+            t += DT
+            frames.append(z.frame)
+            fades.append(z.fade)
+        self.assertEqual(frames, sorted(frames))
+        self.assertEqual(frames[-1], KIND_FRAMES["death"] - 1)               # termina deitado
+        self.assertEqual(fades, sorted(fades, reverse=True))                 # some aos poucos
+        self.assertAlmostEqual(t, fall + st["corpse_time"], delta=2 * DT)
+        self.assertEqual(z.state, "dead")
+
+    def test_new_kind_rises_from_the_floor(self):
+        z = Zombie((2, 2), open_room(6).rooms[0], "nurse")
+        z.wake()
+        self.assertEqual(z.anim, "emerge")
+        rise = KIND_FRAMES["emerge"] / S.ZOMBIE_KINDS["nurse"]["rise_fps"]
+        for _ in range(round((rise + 0.05) / DT)):
+            z.update(DT, open_room(6), set(), self.rng)
+        self.assertIn(z.state, (IDLE, WALK))
+
+    def test_idle_faces_the_last_direction(self):
+        z = Zombie((2, 2), None, "doctor")
+        z.state, z.facing = IDLE, "left"
+        z._animate(DT)
+        self.assertEqual(z.anim, "idle_left")
+        z = Zombie((2, 2), None, "classic")
+        z.state, z.facing = IDLE, "left"
+        z._animate(DT)
+        self.assertEqual(z.anim, "idle")                                     # o clássico só tem de frente
+
+
+class KindSpawnTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.by_theme = {}
+        cls.kinds = set()
+        cls.maps = []
+        for seed in range(150):
+            d = generate(seed)
+            zs = spawn_zombies(d, avoid=[d.spawn])
+            cls.maps.append((seed, d, zs))
+            for z in zs:
+                cls.kinds.add(z.kind)
+                counts = cls.by_theme.setdefault(z.room.theme, {})
+                counts[z.kind] = counts.get(z.kind, 0) + 1
+
+    def test_all_kinds_appear(self):
+        self.assertEqual(self.kinds, set(S.ZOMBIE_KINDS))
+
+    def test_theme_favourites(self):
+        favourite = {t: max(c, key=c.get) for t, c in self.by_theme.items()}
+        self.assertEqual(favourite["enfermaria"], "nurse")
+        self.assertEqual(favourite["cirurgia"], "doctor")
+        self.assertEqual(favourite["deposito"], "classic")
+
+    def test_kinds_deterministic_and_positions_do_not_depend_on_kinds(self):
+        a = [(z.tile, z.kind) for z in spawn_zombies(generate(42), [generate(42).spawn])]
+        b = [(z.tile, z.kind) for z in spawn_zombies(generate(42), [generate(42).spawn])]
+        self.assertEqual(a, b)
+        # os tipos usam outro rng: com outros pesos, as posições são as mesmas
+        import zombies
+        original = zombies.zombie_weights
+        try:
+            zombies.zombie_weights = lambda theme: [("classic", 1)]
+            only_classic = spawn_zombies(generate(42), [generate(42).spawn])
+        finally:
+            zombies.zombie_weights = original
+        self.assertEqual([z.tile for z in only_classic], [t for t, _ in a])
+        self.assertEqual({z.kind for z in only_classic}, {"classic"})
 
 
 if __name__ == "__main__":

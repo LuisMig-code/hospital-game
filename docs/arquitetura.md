@@ -9,7 +9,7 @@
 | `dungeon.py` | Geração BSP por seed: salas, corredores, portas e móveis (via `furnish`); andável (`is_walkable`, com móveis) e transparente (`is_transparent`, sem) | `generate`, `Dungeon`, `Room`, `normalize_seed` |
 | `doors.py` | Onde ficam as portas e abrir/fechar | `Door`, `place_doors`, `try_toggle` |
 | `player.py` | Movimento tile a tile, corrida, estamina, ataque, vida (golpe, empurrão, invulnerabilidade, morte), animação | `Player`, `tile_center` |
-| `zombies.py` | Zumbis: spawn por sala, estados (enterrado, surgindo, parado, andando, perseguindo, morrendo), caminho até o personagem, golpe, colisão, vida | `Zombie`, `Horde`, `spawn_zombies`, `chase_step` |
+| `zombies.py` | Zumbis: tipos (`ZOMBIE_KINDS`), spawn por sala com o tipo pelo tema, estados (enterrado, surgindo, parado, andando, perseguindo, morrendo), caminho até o personagem, golpe, colisão, vida | `Zombie`, `Horde`, `spawn_zombies`, `chase_step` |
 | `combat.py` | Área de dano do golpe, aplicação nos zumbis, números de dano | `damage_map`, `apply_attack`, `FloatingText`, `texts_for` |
 | `fov.py` | Campo de visão e tiles já explorados | `compute_fov`, `Vision`, `in_radius` |
 | `lighting.py` | Névoa suave (1 pixel por tile, ampliada) e luz com queda/tremulação | `FogLayer`, `Light`, `build_light_mask` |
@@ -19,7 +19,7 @@
 | `elevators.py` | Elevadores de chegada e saída: posição (sem pygame) e estado da animação | `place_elevators`, `Elevator`, `ElevatorActor` |
 | `video.py` | Vídeo da troca de andar: quadros do `.mp4` pelo OpenCV e som pelo mixer | `FloorVideo` |
 | `items.py` | Kit médico no chão: spawn por sala (40%), flutuar e desenho | `MedKit`, `spawn_medkits` |
-| `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando, levando dano, pegando e usando o kit), do kit médico e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_kit_animations`, `load_medkit_item`, `load_zombie_animations` |
+| `sprites.py` | Recorta os sprite sheets do personagem (andando, atacando, levando dano, pegando e usando o kit), do kit médico e do zumbi | `load_animations`, `load_attack_animations`, `load_damage_animations`, `load_kit_animations`, `load_medkit_item`, `load_zombie_animations`, `load_zombie_kind_animations` |
 | `tileset.py` | Piso, paredes e portas novos (recorte) e montagem do mapa por tema | `Tileset`, `render_map`, `theme_at`, `load_floor_blocks`, `load_wall_pieces`, `load_door_pieces` |
 
 Dependências entre módulos (setas = "usa"):

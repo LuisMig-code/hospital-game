@@ -24,7 +24,8 @@ from elevators import ElevatorActor
 from video import FloorVideo
 from items import spawn_medkits
 from sprites import (load_animations, load_attack_animations, load_damage_animations, load_elevator_animations,
-                     load_kit_animations, load_medkit_item, load_zombie_animations)
+                     load_kit_animations, load_medkit_item, load_zombie_animations,
+                     load_zombie_kind_animations)
 from zombies import Horde, touching
 from doors import try_toggle
 from props import PropArt
@@ -77,7 +78,9 @@ class Game:
         self.medkit_frames, self.medkit_icon = load_medkit_item()
         self.elevator_anims = load_elevator_animations()
         self.time = 0.0                    # segundos de jogo (animação dos itens)
-        self.zombie_anims = load_zombie_animations()
+        # animações de cada tipo de zumbi (settings.ZOMBIE_KINDS)
+        self.zombie_anims = {k: load_zombie_animations() if k == "classic" else load_zombie_kind_animations(k)
+                             for k in S.ZOMBIE_KINDS}
         self.small_font = pygame.font.SysFont("consolas", 15)
         self.big_font = pygame.font.SysFont("consolas", 72, bold=True)
         self._vignette = None
@@ -395,7 +398,7 @@ class Game:
         for z in self.horde.active():
             if self.show_fog and z.pixel_tile() not in self.vision.visible:
                 continue
-            actors.append((z.feet_y(), lambda z=z: z.draw(view, cam, self.zombie_anims)))
+            actors.append((z.feet_y(), lambda z=z: z.draw(view, cam, self.zombie_anims[z.kind])))
         for _, draw in sorted(actors, key=lambda a: a[0]):
             draw()
 
@@ -602,10 +605,10 @@ class Game:
         empurra o personagem (os outros caem na invulnerabilidade)."""
         p = self.player
         for z in attackers:
-            if p.take_hit(S.ZOMBIE_DAMAGE, z.tile, self.dungeon, self.horde.blocked_tiles()):
+            if p.take_hit(z.damage, z.tile, self.dungeon, self.horde.blocked_tiles()):
                 self.hit_flash = S.HIT_SCREEN_FLASH
                 fx, fy = p.feet()
-                self.texts.append(FloatingText(p.x, fy - S.PLAYER_SPRITE_HEIGHT, f"-{S.ZOMBIE_DAMAGE}",
+                self.texts.append(FloatingText(p.x, fy - S.PLAYER_SPRITE_HEIGHT, f"-{z.damage}",
                                                (255, 60, 60)))
 
     def step(self, dt, keys):

@@ -1,6 +1,6 @@
 # Hospital Game — documentação
 
-Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a partir de uma **seed**, uma dungeon de hospital com salas, corredores e portas. O personagem nasce no canto superior esquerdo, anda tile a tile, pode correr gastando estamina, abre e fecha portas e só enxerga o que está perto dele (névoa de guerra). Cada sala tem de 3 a 5 zumbis enterrados que saem do chão quando o personagem os vê e ficam vagando pela sala.
+Jogo top-down feito em **Python + Pygame (pygame-ce)**. Cada partida gera, a partir de uma **seed**, uma dungeon de hospital com salas, corredores e portas. O personagem nasce no canto superior esquerdo, anda tile a tile, pode correr gastando estamina, abre e fecha portas e só enxerga o que está perto dele (névoa de guerra). Cada sala tem de 3 a 5 zumbis — o zumbi clássico, médicos, enfermeiras e cadeirantes, conforme o tema da sala — que saem do chão (ou levantam dele) quando o personagem os vê e ficam vagando pela sala.
 
 ## Índice
 
@@ -65,6 +65,6 @@ tools/export_frames.py   exporta os recortes em PNG para conferência
 tests/               testes unitários (unittest)
 assets/personagem/   sprite sheet do personagem
 assets/background/   tileset do hospital (pisos, paredes, portas)
-assets/monster/      sprite sheet do zumbi
+assets/monster/      sprite sheets dos zumbis (clássico, médico, enfermeira, cadeirante)
 docs/                esta documentação
 ```

@@ -17,7 +17,7 @@ import pygame
 
 import settings as S
 from player import Player, tile_center
-from sprites import ZOMBIE_ROWS
+from sprites import zombie_frames, zombie_low_frame
 
 DIRS = {"right": (1, 0), "left": (-1, 0), "up": (0, -1), "down": (0, 1)}
 # 8 direções de caminhada (retas e diagonais)
@@ -31,7 +31,7 @@ def facing_for(dx, dy):
     return "down" if dy > 0 else "up"
 
 
-FRAMES = {name: count for _, name, count in ZOMBIE_ROWS}
+FRAMES = zombie_frames("classic")           # quadros do zumbi clássico (cada tipo: zombie_frames)
 
 UNDERGROUND, EMERGING, IDLE, WALK, CHASE = "underground", "emerging", "idle", "walk", "chase"
 DYING, DEAD = "dying", "dead"
@@ -92,7 +92,10 @@ def room_at(dungeon, tile):
 
 
 class Zombie:
-    def __init__(self, tile, room):
+    def __init__(self, tile, room, kind="classic"):
+        self.kind = kind                       # tipo (settings.ZOMBIE_KINDS): aparência e atributos
+        self.stats = S.ZOMBIE_KINDS[kind]
+        self.frames = zombie_frames(kind)
         self.tile = tuple(tile)
         self.target = None
         self.room = room
@@ -106,7 +109,9 @@ class Zombie:
         self.frame = 0
         self.frame_time = 0.0
         self.time_in = {IDLE: 0.0, WALK: 0.0}   # estatística (usada nos testes)
-        self.hp = S.ZOMBIE_HP
+        self.hp = self.max_hp = self.stats["hp"]
+        self.damage = self.stats["damage"]
+        self.fade = 1.0         # opacidade (o corpo some depois de cair)
         self.flash = 0.0        # tempo restante piscando (levou dano)
         self.hp_bar = 0.0       # tempo restante mostrando a barra de vida
         self.windup = None      # preparando o golpe: segundos que faltam
@@ -147,7 +152,7 @@ class Zombie:
             self.target = None
             self.windup, self.lunge = None, 0.0
             self.knock_from = None             # morre onde estiver (afunda ali)
-            self.anim, self.frame, self.frame_time = "emerge", FRAMES["emerge"] - 1, 0.0
+            self.anim, self.frame, self.frame_time = "death", 0, 0.0
             return True
         return False
 
@@ -289,16 +294,20 @@ class Zombie:
         self.lunge = max(0.0, self.lunge - dt / 0.2)
 
         if self.state == DYING:
-            # surgir ao contrário: afunda de volta no chão
+            # clássico: afunda de volta no buraco; os outros caem e o corpo some
             self.frame_time += dt
-            frame = FRAMES["emerge"] - 1 - int(self.frame_time * S.ZOMBIE_DEATH_FPS)
-            if frame < 0:
+            n = self.frames["death"]
+            fall = n / self.stats["death_fps"]
+            self.frame = min(n - 1, int(self.frame_time * self.stats["death_fps"]))
+            corpse = self.stats["corpse_time"]
+            if corpse > 0:
+                self.fade = max(0.0, min(1.0, 1 - (self.frame_time - fall) / corpse))
+            if self.frame_time >= fall + corpse:
                 self.state = DEAD
-            self.frame = max(0, frame)
             return False
         if self.state == EMERGING:
             self.frame_time += dt
-            if self.frame_time * S.ZOMBIE_EMERGE_FPS >= FRAMES["emerge"]:
+            if self.frame_time * self.stats["rise_fps"] >= self.frames["emerge"]:
                 self._go_idle(rng)
             self._animate(0)
             return False
@@ -339,7 +348,10 @@ class Zombie:
             if self.state == CHASE:
                 self.time_in[WALK] += dt
             tx, ty = tile_center(self.target)
-            speed = S.ZOMBIE_CHASE_SPEED if self.state == CHASE else S.ZOMBIE_SPEED
+            speed = self.stats["chase_speed"] if self.state == CHASE else self.stats["speed"]
+            if self.target[0] != self.tile[0] and self.target[1] != self.tile[1]:   # passo diagonal
+                # (cadeira de rodas: mais lenta na diagonal)
+                speed *= self.stats["diagonal"]
             step = speed * dt
             dist = math.hypot(tx - self.x, ty - self.y)   # reto ou diagonal: mesma velocidade
             if step >= dist:
@@ -356,14 +368,16 @@ class Zombie:
     def _animate(self, dt):
         if self.state == EMERGING:
             anim = "emerge"
-            frame = min(FRAMES["emerge"] - 1, int(self.frame_time * S.ZOMBIE_EMERGE_FPS))
+            frame = min(self.frames["emerge"] - 1, int(self.frame_time * self.stats["rise_fps"]))
         else:
             walking = self.state == WALK or (self.state == CHASE and self.target is not None)
             anim = f"walk_{self.facing}" if walking else "idle"
+            if not walking and self.facing != "down" and f"idle_{self.facing}" in self.frames:
+                anim = f"idle_{self.facing}"         # parado virado para o lado/costas
             if anim != self.anim:
                 self.anim, self.frame_time = anim, 0.0
             self.frame_time += dt
-            frame = int(self.frame_time * S.ZOMBIE_ANIM_FPS) % FRAMES[anim]
+            frame = int(self.frame_time * self.stats["anim_fps"]) % self.frames[anim]
         self.anim, self.frame = anim, frame
 
     # ---------------------------------------------------------------- desenho
@@ -389,13 +403,16 @@ class Zombie:
         img = anims[self.anim][self.frame]
         ox, oy = self.attack_offset()
         feet = (round(self.x + ox - camera[0]), round(self.feet_y() + oy - camera[1]))
-        sunk = self.state in (EMERGING, DYING) and self.frame < 4
-        if not sunk:   # buraco no chão não tem sombra
+        sunk = self.state in (EMERGING, DYING) and zombie_low_frame(self.kind, self.anim, self.frame)
+        if not sunk:   # buraco no chão (ou corpo caído) não tem sombra
             shadow = Player.shadow()
             surf.blit(shadow, shadow.get_rect(center=(feet[0], feet[1] - 3)))
         if self.flash > 0:   # pisca claro/avermelhado ao levar dano
             img = img.copy()
             img.fill((150, 70, 60), special_flags=pygame.BLEND_RGB_ADD)
+        if self.fade < 1.0:   # corpo sumindo
+            img = img.copy()
+            img.set_alpha(round(255 * self.fade))
         surf.blit(img, img.get_rect(midbottom=feet))
         if self.hp_bar > 0 and self.solid:
             self.draw_hp_bar(surf, feet)
@@ -405,16 +422,19 @@ class Zombie:
         w, h = 26, 4
         x, y = feet[0] - w // 2, feet[1] - S.ZOMBIE_SIZE + 6
         pygame.draw.rect(surf, (15, 10, 10), (x - 1, y - 1, w + 2, h + 2))
-        fill = round(w * self.hp / S.ZOMBIE_HP)
-        color = (90, 200, 70) if self.hp > S.ZOMBIE_HP / 2 else (230, 170, 40) if self.hp > S.ZOMBIE_HP / 4 else (220, 50, 40)
+        ratio = self.hp / self.max_hp
+        fill = round(w * ratio)
+        color = (90, 200, 70) if ratio > 1 / 2 else (230, 170, 40) if ratio > 1 / 4 else (220, 50, 40)
         pygame.draw.rect(surf, color, (x, y, fill, h))
 
 
 def spawn_zombies(dungeon, avoid=(), avoid_radius=2):
     """3–5 zumbis enterrados por sala, em tiles de chão distintos, longe do
     spawn do personagem (`avoid`) e sem encostar em portas. Determinístico
-    pela seed."""
+    pela seed. O tipo de cada um é sorteado pelos pesos do tema da sala
+    (themes.Theme.zombies), com outro rng: as posições não dependem dos tipos."""
     rng = random.Random(dungeon.seed ^ 0x2B1E)
+    kind_rng = random.Random(dungeon.seed ^ 0x7C1D)
     door_near = {(x + dx, y + dy) for (x, y) in dungeon.door_at
                  for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
     zombies = []
@@ -424,9 +444,19 @@ def spawn_zombies(dungeon, avoid=(), avoid_radius=2):
                  if dungeon.is_walkable(x, y) and (x, y) not in door_near
                  and all(max(abs(x - ax), abs(y - ay)) > avoid_radius for ax, ay in avoid)]
         n = min(rng.randint(*S.ZOMBIES_PER_ROOM), len(cands))
+        kinds, weights = zip(*zombie_weights(getattr(room, "theme", None)))
         for tile in rng.sample(cands, n):
-            zombies.append(Zombie(tile, room))
+            zombies.append(Zombie(tile, room, kind_rng.choices(kinds, weights)[0]))
     return zombies
+
+
+def zombie_weights(theme):
+    """[(tipo, peso), ...] do tema da sala (sem tema: todos iguais)."""
+    from themes import THEMES
+    t = THEMES.get(theme)
+    if t is None or not t.zombies:
+        return [(k, 1) for k in S.ZOMBIE_KINDS]
+    return list(t.zombies)
 
 
 class Horde:

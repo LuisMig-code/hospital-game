@@ -2,6 +2,12 @@
 
 Registro do que foi implementado em cada etapa, da mais recente para a mais antiga. Ao adicionar algo novo, inclua uma entrada aqui e atualize os outros documentos afetados.
 
+## 2026-11-12 — Zumbis médico, enfermeira e cadeirante
+- 3 tipos novos de zumbi, com sheets próprios (`assets/monster/`), misturados ao zumbi clássico. Começam caídos e **levantam do chão** quando vistos (a morte ao contrário); ao morrer, **caem** e o corpo some aos poucos.
+- Atributos por tipo (`ZOMBIE_KINDS`): enfermeira frágil e rápida (vida 7), médico como o clássico, cadeirante resistente (vida 14), lento vagando e rápido perseguindo em linha reta (mais lento na diagonal).
+- O tipo é sorteado pelo tema da sala (`Theme.zombies`): enfermeiras na Enfermaria/Emergência, médicos no Centro cirúrgico/Necrotério, cadeirantes na Recepção/Enfermaria, o clássico no Depósito. As posições dos zumbis não mudaram.
+- Parados, os tipos novos ficam virados para o lado em que andaram; o dano do golpe vem do tipo.
+
 ## 2026-11-11 — Caixas sempre fechadas
 - O caixote aberto (`crate_open`, com brilho de loot) saiu do Depósito: todas as caixas aparecem fechadas. Ele fica no catálogo para o futuro sistema de loot.
 

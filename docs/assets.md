@@ -176,3 +176,24 @@ Essas pastas estão no `.gitignore`, porque o jogo faz os recortes sozinho ao ab
 3. Escala 2× por vizinho mais próximo (`ZOMBIE_SIZE = 64`).
 
 `tools/export_frames.py` também salva os quadros do zumbi em `assets/monster/frames/` (ignorada no git) com um `preview.png` ampliado sobre fundo escuro.
+
+## Zumbis médico, enfermeira e cadeirante — `assets/monster/`
+- `Zombie Doctor Pixel Sprite Sheet.png`, `Zombie Nurse Pixel Sprite Sheet.png` e `Pixel Zombie Wheelchair Animation Sheet.png` (tipos `doctor`, `nurse` e `wheelchair` em `ZOMBIE_KINDS`).
+- 1447×1087 px cada, **fundo transparente**, numa grade de 8 colunas (~181 px) e 6 linhas:
+
+| Linha | Animação | Quadros |
+|---|---|---|
+| 1 | `idle` (de frente, respirando) | 8 |
+| 2 | `walk_down` | 8 |
+| 3 | `walk_left` | 8 |
+| 4 | `walk_right` | 8 |
+| 5 | `walk_up` (de costas) | 8 |
+| 6 | `death` — em pé, cambaleia, ajoelha, cai e fica deitado | 6 |
+
+**Como o recorte funciona** (`sprites.load_zombie_kind_animations`, `slice_kind_sheet`):
+1. Linhas e quadros saem da **projeção do alpha** (na morte os quadros deitados passam da célula da grade, então a grade sozinha não serve).
+2. Cada quadro é recortado **centrado no meio da sua célula da grade**, com a mesma largura e a mesma base em toda a linha, copiando só as colunas do desenho daquele quadro (nada do vizinho). Desenhado pelo meio da base, o corpo fica parado no lugar enquanto anda.
+3. Uma escala por tipo (`smoothscale`): o quadro parado mais alto fica com `ZOMBIE_HEIGHT` (54 px; o personagem tem 48).
+4. Animações a mais: `emerge` = `death` ao contrário (**levantar do chão**) e `idle_left/right/up` = o 1º quadro de cada caminhada.
+
+`tools/export_frames.py` salva os quadros na escala do jogo em `assets/monster/frames/<tipo>/`, com um `preview.png` ampliado 3×.

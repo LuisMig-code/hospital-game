@@ -118,6 +118,29 @@ PLAYER_INVULN_TIME = 1.0        # segundos invulnerável (piscando) depois do da
 HIT_SCREEN_FLASH = 0.35         # segundos do vermelho nas bordas da tela ao levar golpe
 GAME_OVER_TIME = 3.0            # segundos de "GAME OVER" antes de recomeçar a mesma dungeon
 
+# Tipos de zumbi. "classic" é o zumbi de 32 px (sai de um buraco no chão);
+# os outros vêm de sheets de 6 linhas (parado, 4 caminhadas, morte): começam
+# caídos e levantam (a morte ao contrário); ao morrer, caem e o corpo some.
+#   hp: vida | speed / chase_speed: px/s vagando / perseguindo
+#   diagonal: fator da velocidade nos passos diagonais (cadeira de rodas vira mal)
+#   damage: dano do golpe | anim_fps: parado/andando | rise_fps: surgir/levantar
+#   death_fps: morrer | corpse_time: segundos do corpo sumindo depois de cair
+ZOMBIE_HEIGHT = 54              # altura na tela dos zumbis novos em pé (o personagem tem 48)
+ZOMBIE_KINDS = {
+    "classic": dict(sheet=ZOMBIE_SHEET, hp=ZOMBIE_HP, speed=ZOMBIE_SPEED, chase_speed=ZOMBIE_CHASE_SPEED,
+                    diagonal=1.0, damage=ZOMBIE_DAMAGE, anim_fps=ZOMBIE_ANIM_FPS,
+                    rise_fps=ZOMBIE_EMERGE_FPS, death_fps=ZOMBIE_DEATH_FPS, corpse_time=0.0),
+    "doctor": dict(sheet=ASSETS / "monster" / "Zombie Doctor Pixel Sprite Sheet.png",
+                   hp=10, speed=45, chase_speed=70, diagonal=1.0, damage=2,
+                   anim_fps=9, rise_fps=8, death_fps=10, corpse_time=1.2),
+    "nurse": dict(sheet=ASSETS / "monster" / "Zombie Nurse Pixel Sprite Sheet.png",
+                  hp=7, speed=55, chase_speed=85, diagonal=1.0, damage=2,
+                  anim_fps=11, rise_fps=10, death_fps=10, corpse_time=1.2),
+    "wheelchair": dict(sheet=ASSETS / "monster" / "Pixel Zombie Wheelchair Animation Sheet.png",
+                       hp=14, speed=30, chase_speed=95, diagonal=0.6, damage=2,
+                       anim_fps=9, rise_fps=7, death_fps=10, corpse_time=1.2),
+}
+
 # Kit médico
 MEDKIT_ROOM_CHANCE = 0.4        # chance de uma sala ter um kit no chão
 MEDKIT_HEAL = 2                 # vida recuperada por kit (até PLAYER_HP)

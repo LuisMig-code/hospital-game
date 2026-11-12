@@ -46,6 +46,7 @@ def main():
     print(f"Frames salvos em {out}")
     export_tileset()
     export_zombie()
+    export_zombie_kinds()
     export_attack()
     export_damage()
     export_medkit()
@@ -104,6 +105,33 @@ def export_zombie():
         print(f"zumbi {name:11s} {len(frames)} quadros")
     pygame.image.save(preview, str(out / "preview.png"))
     print(f"Quadros do zumbi salvos em {out}")
+
+
+def export_zombie_kinds():
+    """Quadros dos zumbis novos (médico, enfermeira, cadeirante) na escala do
+    jogo, em assets/monster/frames/<tipo>/, e um preview ampliado 3x de cada."""
+    from sprites import load_zombie_kind_animations
+    import settings as S
+
+    for kind in S.ZOMBIE_KINDS:
+        if kind == "classic":
+            continue
+        out = ASSETS / "monster" / "frames" / kind
+        out.mkdir(parents=True, exist_ok=True)
+        anims = load_zombie_kind_animations(kind)
+        z = 3
+        cw = max(img.get_width() for f in anims.values() for img in f) + 4
+        ch = max(img.get_height() for f in anims.values() for img in f) + 4
+        cols = max(len(f) for f in anims.values())
+        preview = pygame.Surface((cols * cw * z, len(anims) * ch * z))
+        preview.fill((40, 45, 45))
+        for r, (name, frames) in enumerate(anims.items()):
+            for c, img in enumerate(frames):
+                pygame.image.save(img, str(out / f"{name}_{c}.png"))
+                big = pygame.transform.scale_by(img, z)
+                preview.blit(big, big.get_rect(midbottom=(c * cw * z + cw * z // 2, (r + 1) * ch * z - 4)))
+        pygame.image.save(preview, str(out / "preview.png"))
+        print(f"Quadros do zumbi {kind} salvos em {out}")
 
 
 def export_attack():

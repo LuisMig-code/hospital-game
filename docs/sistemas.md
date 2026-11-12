@@ -158,16 +158,30 @@ Custo: o desenho do mundo leva ~3–4 ms por quadro (medido sem janela), bem aba
 ### Spawn
 `spawn_zombies` (chamado por `Horde`) coloca **3 a 5 zumbis por sala** (`ZOMBIES_PER_ROOM`), em tiles de chão distintos dentro do retângulo da sala, sem encostar em portas e a mais de 2 tiles do spawn do personagem. Usa um `Random` derivado da seed: a mesma seed gera os mesmos zumbis nos mesmos lugares. Em 200 seeds, todas as salas ficaram com 3, 4 ou 5.
 
+### Tipos de zumbi
+São 4 tipos (`settings.ZOMBIE_KINDS`), cada um com aparência e atributos próprios:
+
+| Tipo | Vida | Vagando | Perseguindo | Dano | Como aparece / morre |
+|---|---|---|---|---|---|
+| `classic` (o zumbi de 32 px) | 10 | 45 px/s | 70 px/s | 2 | Sai de um buraco no chão; ao morrer afunda de volta |
+| `doctor` (médico) | 10 | 45 px/s | 70 px/s | 2 | Começa caído e **levanta** (a animação de morte ao contrário); ao morrer **cai** e o corpo some aos poucos (`corpse_time`, 1,2 s) |
+| `nurse` (enfermeira) | 7 | 55 px/s | 85 px/s | 2 | Igual ao médico — frágil e rápida |
+| `wheelchair` (cadeirante) | 14 | 30 px/s | 95 px/s em linha reta, ×0,6 na diagonal | 2 | Igual ao médico — lento vagando, mas dispara em linha reta; resistente |
+
+- O tipo é sorteado na hora do spawn com os **pesos do tema da sala** (`Theme.zombies`): enfermeiras mais na Enfermaria e na Emergência, médicos no Centro cirúrgico e no Necrotério, cadeirantes na Recepção e na Enfermaria, o clássico no Depósito; os outros tipos também aparecem, menos. O sorteio usa outro `Random` (seed ^ 0x7C1D): as **posições** dos zumbis não dependem dos tipos.
+- Os tipos novos ficam parados virados para o último lado em que andaram (`idle_left/right/up`); o clássico só tem a pose de frente.
+- O golpe tira o dano do tipo (`Zombie.damage`); a barra de vida é relativa à vida máxima do tipo.
+
 ### Estados
 | Estado | O que acontece | Bloqueia? |
 |---|---|---|
 | `underground` | Enterrado e invisível, esperando ser visto. | não |
-| `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (8 quadros, 1 s). | sim |
+| `emerging` | Assim que o tile dele entra na visão do personagem (e o personagem não está em cima), toca a animação de **sair do chão** (clássico: 8 quadros, 1 s) ou de **levantar do chão** (tipos novos: 6 quadros, `rise_fps`). | sim |
 | `idle` | Pausa entre caminhadas (`ZOMBIE_IDLE_TIME`, hoje **0**: emenda direto na próxima caminhada). Cercado, sem direção livre, espera 0,1–0,3 s e tenta de novo. | sim |
 | `chase` | Personagem a até **5 tiles** (Chebyshev, `ZOMBIE_CHASE_RADIUS`): vai atrás dele a 70 px/s (`ZOMBIE_CHASE_SPEED`) e, colado nele, ataca (veja "Vida do personagem"). | sim |
 | `walk` | Sorteia uma das **8 direções** livres (retas ou diagonais) e anda 1–4 tiles nela (`ZOMBIE_WANDER_STEPS`), tile a tile, a 45 px/s (`ZOMBIE_SPEED`) — na diagonal, mesma velocidade em px/s. Depois volta a `idle`. | sim |
-| `dying` | Vida chegou a 0: toca a animação de surgir **ao contrário** (afunda de volta no chão, `ZOMBIE_DEATH_FPS`). Não leva mais dano. | não |
-| `dead` | Terminou de afundar: sai do jogo e conta em "Abatidos". | — |
+| `dying` | Vida chegou a 0: toca a animação `death` (`death_fps` do tipo) — o clássico afunda de volta no chão; os tipos novos caem e o corpo fica deitado sumindo (`corpse_time`). Não leva mais dano. | não |
+| `dead` | Terminou de afundar (ou o corpo sumiu): sai do jogo e conta em "Abatidos". | — |
 
 - Vagando, o zumbi só anda para tiles **dentro da própria sala**, que sejam chão e estejam livres (sem o personagem nem outro zumbi — vale o tile atual e o de destino). Se não houver direção livre, espera um pouco e tenta de novo.
 - Na diagonal, como o personagem, **não corta quina**: os dois tiles retos atravessados também têm que ser chão da sala. Usa o sprite horizontal (`walk_left`/`walk_right`).
@@ -222,7 +236,7 @@ O golpe é centrado no impacto, pela distância de Chebyshev (contando diagonais
 ## Vida do personagem (`player.py`, `zombies.py`, `main.py`)
 
 ### Golpe do zumbi
-- Zumbi em `chase` **colado** no personagem (reto ou diagonal sem quina de parede no meio) prepara o golpe por `ZOMBIE_ATTACK_WINDUP` (0,4 s) e bate: **2 de dano** (`ZOMBIE_DAMAGE`). Depois espera `ZOMBIE_ATTACK_COOLDOWN` (1 s) antes de preparar de novo. Se o personagem sair de perto durante o preparo, o golpe é cancelado.
+- Zumbi em `chase` **colado** no personagem (reto ou diagonal sem quina de parede no meio) prepara o golpe por `ZOMBIE_ATTACK_WINDUP` (0,4 s) e bate: **o dano do tipo** (hoje **2** em todos; `ZOMBIE_KINDS`). Depois espera `ZOMBIE_ATTACK_COOLDOWN` (1 s) antes de preparar de novo. Se o personagem sair de perto durante o preparo, o golpe é cancelado.
 - `Horde.update` devolve os zumbis que bateram no quadro; `Game.zombie_hits` aplica no personagem (`Player.take_hit`).
 
 ### Dano e empurrão

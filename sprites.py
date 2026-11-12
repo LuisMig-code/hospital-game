@@ -213,6 +213,109 @@ def load_zombie_animations(size=ZOMBIE_SIZE, raw=False):
                 img = pygame.transform.scale(img, (size, size))
             frames.append(img)
         anims[name] = frames
+    anims["death"] = anims["emerge"][::-1]      # morrer = afundar de volta no buraco
+    return anims
+
+
+# ------------------------------------------------------- zumbis de outros tipos
+# Sheets de 1447x1087 com fundo transparente, 6 linhas numa grade de 8
+# colunas: (linha, nome, quadros). A morte termina deitado; ao contrário, é o
+# zumbi levantando do chão ("emerge").
+KIND_ROWS = [
+    (0, "idle", 8),
+    (1, "walk_down", 8),
+    (2, "walk_left", 8),
+    (3, "walk_right", 8),
+    (4, "walk_up", 8),
+    (5, "death", 6),
+]
+KIND_GRID_COLS = 8
+KIND_FRAMES = {name: count for _, name, count in KIND_ROWS}
+KIND_FRAMES.update(emerge=KIND_FRAMES["death"], idle_left=1, idle_right=1, idle_up=1)
+CLASSIC_FRAMES = {name: count for _, name, count in ZOMBIE_ROWS}
+CLASSIC_FRAMES["death"] = CLASSIC_FRAMES["emerge"]
+
+
+def zombie_frames(kind):
+    """Quantidade de quadros de cada animação do tipo de zumbi."""
+    return CLASSIC_FRAMES if kind == "classic" else KIND_FRAMES
+
+
+def zombie_low_frame(kind, anim, frame):
+    """Quadro "no chão" (buraco, ou o corpo caído): sem sombra embaixo."""
+    if kind == "classic":
+        n = CLASSIC_FRAMES["emerge"]
+        return (anim == "emerge" and frame < 4) or (anim == "death" and frame >= n - 4)
+    n = KIND_FRAMES["death"]
+    return (anim == "death" and frame >= 3) or (anim == "emerge" and frame <= n - 4)
+
+
+def slice_kind_sheet(sheet):
+    """{nome: [Rect, ...]} dos quadros de um sheet de zumbi novo.
+
+    Linhas e quadros saem da projeção do alpha (na morte os quadros deitados
+    passam da célula da grade). Cada quadro é recortado centrado no meio da
+    sua célula da grade, com a mesma largura e a mesma base (os pés) em toda
+    a linha: desenhado pelo meio da base, o corpo fica parado no lugar.
+    Devolve {nome: [(Rect do recorte, (x0, x1) do desenho), ...]} — só o
+    trecho (x0, x1) é copiado, para não pegar pedaço do quadro vizinho."""
+    w, h = sheet.get_size()
+    mask = pygame.mask.from_surface(sheet, ALPHA_THRESHOLD)
+    rows = _keep_largest(_runs(_row_counts(mask, 0, 0, w, h)), len(KIND_ROWS))
+    pitch = w / KIND_GRID_COLS
+    result = {}
+    for (row, name, count), (y0, y1) in zip(KIND_ROWS, rows):
+        cols = _keep_largest(_runs(_col_counts(mask, 0, y0, w, y1 - y0)), count)
+        if len(cols) != count:
+            raise ValueError(f"linha {row} ({name}): {len(cols)} quadros, esperava {count}")
+        half = 0
+        for i, (x0, x1) in enumerate(cols):
+            cx = (i + 0.5) * pitch
+            half = max(half, cx - x0, x1 - cx)
+        half = int(half) + 1
+        frames = []
+        for i, run in enumerate(cols):
+            cx = round((i + 0.5) * pitch)
+            frames.append((pygame.Rect(cx - half, y0, 2 * half, y1 - y0), run))
+        result[name] = frames
+    return result
+
+
+def _crop(sheet, rect, run):
+    """Recorte `rect` (pode passar da borda do sheet) copiando só as colunas
+    `run` = (x0, x1) do desenho; o resto fica transparente."""
+    out = pygame.Surface(rect.size, pygame.SRCALPHA)
+    x0, x1 = run
+    out.blit(sheet, (x0 - rect.x, 0), pygame.Rect(x0, rect.y, x1 - x0, rect.h))
+    return out
+
+
+def load_zombie_kind_animations(kind, height=None, raw=False):
+    """{nome: [Surface, ...]} de um zumbi novo ("doctor", "nurse",
+    "wheelchair"). Mesma escala em todas as animações: o quadro parado mais
+    alto fica com `height` px (ZOMBIE_HEIGHT). Além das linhas do sheet:
+    `emerge` (a morte ao contrário: levantando do chão) e `idle_left/right/up`
+    (o 1º quadro de cada caminhada)."""
+    from settings import ZOMBIE_HEIGHT, ZOMBIE_KINDS
+    height = height or ZOMBIE_HEIGHT
+    sheet = pygame.image.load(str(ZOMBIE_KINDS[kind]["sheet"]))
+    sheet = sheet.convert_alpha() if pygame.display.get_surface() is not None else sheet
+    rects = slice_kind_sheet(sheet)
+    mask = pygame.mask.from_surface(sheet, ALPHA_THRESHOLD)
+    tallest = max(_cell_bbox(mask, r.clip(sheet.get_rect())).h for r, _ in rects["idle"])
+    scale = 1.0 if raw else height / tallest
+    anims = {}
+    for name, frames in rects.items():
+        surfs = []
+        for r, run in frames:
+            img = _crop(sheet, r, run)
+            if scale != 1.0:
+                img = pygame.transform.smoothscale(img, (max(1, round(r.w * scale)), max(1, round(r.h * scale))))
+            surfs.append(img)
+        anims[name] = surfs
+    anims["emerge"] = anims["death"][::-1]
+    for d in ("left", "right", "up"):
+        anims[f"idle_{d}"] = [anims[f"walk_{d}"][0]]
     return anims
 
 

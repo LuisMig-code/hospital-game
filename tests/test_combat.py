@@ -122,8 +122,9 @@ class ApplyAttackTests(unittest.TestCase):
             self.horde.update(DT, self.player, self.visible)
             if z.state == DYING:
                 frames.append(z.frame)
-        self.assertEqual(frames, sorted(frames, reverse=True))   # surgir ao contrário
-        self.assertEqual(frames[0], 7)
+        self.assertEqual(frames, sorted(frames))                 # "death" = surgir ao contrário
+        self.assertEqual((frames[0], frames[-1]), (0, 7))
+        self.assertEqual(z.anim, "death")
         self.assertEqual(z.state, DEAD)
         self.assertNotIn(z, self.horde.zombies)
         self.assertEqual(self.horde.killed, 1)

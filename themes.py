@@ -150,6 +150,7 @@ class Theme:
     scatter: tuple = ()           # detalhes no chão (sem colisão)
     loose: tuple = ()             # props soltos pela sala (1x1, com colisão)
     weight: int = 1               # chance relativa de sortear o tema
+    zombies: tuple = ()           # pesos dos tipos de zumbi: ((tipo, peso), ...) (vazio: iguais)
 
 
 THEMES = {
@@ -164,6 +165,7 @@ THEMES = {
                 (("chair", 0, 0), ("chair", 1, 0), ("chair_torn", 2, 0))),
         scatter=("tiles_loose", "glass"),
         loose=("chair_torn", "office_chair_torn", "trash_blood"),
+        zombies=(("wheelchair", 3), ("classic", 3), ("nurse", 1), ("doctor", 1)),
     ),
     "enfermaria": Theme(
         "Enfermaria", wall=2, door="closed",
@@ -176,6 +178,7 @@ THEMES = {
                 (("curtain_blood", 0, 0),)),
         scatter=("bandages", "gloves", "bloody_cloth"),
         loose=("wheelchair", "wheelchair_back", "iv_stand"),
+        zombies=(("nurse", 4), ("wheelchair", 3), ("classic", 2), ("doctor", 1)),
     ),
     "emergencia": Theme(
         "Emergência", wall=1, door="blood",
@@ -189,6 +192,7 @@ THEMES = {
                 (("bed_broken", 0, 0),)),
         scatter=("syringes", "bloody_cloth", "iv_bags", "glass"),
         loose=("wheelchair_fallen", "monitor_broken", "chair_fallen"),
+        zombies=(("nurse", 3), ("doctor", 2), ("classic", 2), ("wheelchair", 1)),
     ),
     "cirurgia": Theme(
         "Centro cirúrgico", wall=3, door="closed",
@@ -201,6 +205,7 @@ THEMES = {
                 (("exam_chair", 0, 0), ("cart", 2, 0))),
         scatter=("syringes", "gloves", "bloody_cloth"),
         loose=("tray_fallen", "oxygen_blood"),
+        zombies=(("doctor", 4), ("nurse", 2), ("classic", 1), ("wheelchair", 1)),
     ),
     "necroterio": Theme(
         "Necrotério", wall=4, door="vault",
@@ -214,6 +219,7 @@ THEMES = {
                 (("stretcher_body", 0, 0),)),
         scatter=("body_bag", "gloves", "bloody_cloth"),
         loose=("biohazard_bin",),
+        zombies=(("doctor", 3), ("classic", 3), ("nurse", 1), ("wheelchair", 1)),
     ),
     "deposito": Theme(
         "Depósito", wall=5, door="shattered",
@@ -227,6 +233,7 @@ THEMES = {
                 (("crate", 0, 0), ("boxes", 0, 1))),
         scatter=("tiles_loose", "glass", "ceiling_debris"),
         loose=("rubble", "boxes", "chair_fallen", "table_fallen", "monitor_smashed", "wheelchair_rusty"),
+        zombies=(("classic", 4), ("doctor", 1), ("nurse", 1), ("wheelchair", 1)),
     ),
 }
 

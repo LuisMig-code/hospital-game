@@ -214,6 +214,27 @@ class SpaceOrderTests(unittest.TestCase):
 
 
 class GameOverTests(unittest.TestCase):
+    def test_hit_uses_the_zombie_kind_damage(self):
+        g = main.Game(7)
+        g.horde.zombies = []
+        p = g.player
+        z = Zombie((p.tile[0] + 1, p.tile[1]), None, "nurse")
+        z.damage = 3                                        # o dano vem do zumbi, não da constante
+        g.zombie_hits([z])
+        self.assertEqual(p.hp, S.PLAYER_HP - 3)
+        self.assertEqual(g.texts[-1].text, "-3")
+
+    def test_draws_every_zombie_kind(self):
+        g = main.Game(7)
+        p = g.player
+        g.horde.zombies = []
+        for i, kind in enumerate(S.ZOMBIE_KINDS):
+            z = Zombie((p.tile[0] + i - 1, p.tile[1] + 2), None, kind)
+            z.state = "idle"
+            g.horde.zombies.append(z)
+        g.show_fog = False
+        g.draw_world()                                      # não pode quebrar em nenhum tipo
+
     def test_zombie_hit_then_game_over_starts_new_run(self):
         g = main.Game(7)
         g.horde.zombies = []
